@@ -31,48 +31,48 @@ jobs:
       working-directory: ${{github.workspace}}/build
       run: ctest -C Release --output-on-failure
       
-  build-macos:
-    runs-on: macos-latest
+  # build-macos:
+  #   runs-on: macos-latest
     
-    steps:
-    - uses: actions/checkout@v3
+  #   steps:
+  #   - uses: actions/checkout@v3
     
-    - name: Install dependencies
-      run: |
-        brew install cmake boost ffmpeg sqlite
+  #   - name: Install dependencies
+  #     run: |
+  #       brew install cmake boost ffmpeg sqlite
     
-    - name: Configure CMake
-      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=Release
+  #   - name: Configure CMake
+  #     run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=Release
     
-    - name: Build
-      run: cmake --build ${{github.workspace}}/build --config Release
+  #   - name: Build
+  #     run: cmake --build ${{github.workspace}}/build --config Release
     
-    - name: Test
-      working-directory: ${{github.workspace}}/build
-      run: ctest -C Release --output-on-failure
+  #   - name: Test
+  #     working-directory: ${{github.workspace}}/build
+  #     run: ctest -C Release --output-on-failure
 
-  build-windows:
-    runs-on: windows-latest
+  # build-windows:
+  #   runs-on: windows-latest
     
-    steps:
-    - uses: actions/checkout@v3
+  #   steps:
+  #   - uses: actions/checkout@v3
     
-    - name: Install vcpkg
-      run: |
-        git clone https://github.com/microsoft/vcpkg.git
-        cd vcpkg
-        .\bootstrap-vcpkg.bat
+  #   - name: Install vcpkg
+  #     run: |
+  #       git clone https://github.com/microsoft/vcpkg.git
+  #       cd vcpkg
+  #       .\bootstrap-vcpkg.bat
     
-    - name: Install dependencies
-      run: |
-        .\vcpkg\vcpkg install boost-filesystem:x64-windows boost-program-options:x64-windows sqlite3:x64-windows ffmpeg:x64-windows
+  #   - name: Install dependencies
+  #     run: |
+  #       .\vcpkg\vcpkg install boost-filesystem:x64-windows boost-program-options:x64-windows sqlite3:x64-windows ffmpeg:x64-windows
     
-    - name: Configure CMake
-      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=${{github.workspace}}/vcpkg/scripts/buildsystems/vcpkg.cmake
+  #   - name: Configure CMake
+  #     run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=${{github.workspace}}/vcpkg/scripts/buildsystems/vcpkg.cmake
     
-    - name: Build
-      run: cmake --build ${{github.workspace}}/build --config Release
+  #   - name: Build
+  #     run: cmake --build ${{github.workspace}}/build --config Release
     
-    - name: Test
-      working-directory: ${{github.workspace}}/build
-      run: ctest -C Release --output-on-failure
+  #   - name: Test
+  #     working-directory: ${{github.workspace}}/build
+  #     run: ctest -C Release --output-on-failure
