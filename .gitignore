@@ -28,6 +28,7 @@ CMakeFiles/
 compile_commands.json
 Makefile
 *.cmake
+!cmake/*.cmake
 
 # Dependency directories
 _deps/
