@@ -1,10 +1,15 @@
 cmake_minimum_required(VERSION 3.14)
 
+# Set policy for using Boost's own CMake config files instead of deprecated FindBoost module
+if(POLICY CMP0167)
+    cmake_policy(SET CMP0167 NEW)
+endif()
+
 # Project definition
-project(Sonora 
-    VERSION 0.1.0
-    DESCRIPTION "Cross-platform open-source music player"
-    LANGUAGES CXX
+project(Sonora
+        VERSION 0.1.0
+        DESCRIPTION "Cross-platform open-source music player"
+        LANGUAGES CXX
 )
 
 # Set C++ standard
@@ -25,9 +30,9 @@ option(SONORA_STATIC_ANALYSIS "Enable static analysis during build" ON)
 include(cmake/CompilerOptions.cmake)
 
 if(DEFINED VCPKG_ROOT AND DEFINED VCPKG_TARGET_TRIPLET)
-  set(BOOST_ROOT "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}")
-  set(BOOST_INCLUDEDIR "${BOOST_ROOT}/include")
-  set(BOOST_LIBRARYDIR "${BOOST_ROOT}/lib")
+    set(BOOST_ROOT "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}")
+    set(BOOST_INCLUDEDIR "${BOOST_ROOT}/include")
+    set(BOOST_LIBRARYDIR "${BOOST_ROOT}/lib")
 endif()
 
 # Dependencies
@@ -43,10 +48,10 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
 # Define include directories
 include_directories(
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
-    ${Boost_INCLUDE_DIRS}
-    ${FFMPEG_INCLUDE_DIRS}
-    ${SQLite3_INCLUDE_DIRS}
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+        ${Boost_INCLUDE_DIRS}
+        ${FFMPEG_INCLUDE_DIRS}
+        ${SQLite3_INCLUDE_DIRS}
 )
 
 # Add subdirectories
