@@ -1,20 +1,36 @@
+import React, { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { Audio } from 'expo-av';
+
+import AppNavigator from './src/navigation/AppNavigator';
+import { useStore } from './src/store';
 
 export default function App() {
+  // Initialize audio session on app start
+  useEffect(() => {
+    const setupAudio = async () => {
+      try {
+        await Audio.setAudioModeAsync({
+          playsInSilentModeIOS: true,
+          staysActiveInBackground: true,
+          shouldDuckAndroid: true,
+        });
+      } catch (error) {
+        console.error('Failed to set audio mode', error);
+      }
+    };
+
+    setupAudio();
+  }, []);
+
   return (
-    <View style={styles.container}>
-      <Text>Open up App.tsx to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <AppNavigator />
+        <StatusBar style="auto" />
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
