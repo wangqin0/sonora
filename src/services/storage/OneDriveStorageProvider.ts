@@ -196,8 +196,20 @@ export class OneDriveStorageProvider extends BaseStorageProvider {
       // Load auth data
       const authData = await AsyncStorage.getItem(ONEDRIVE_AUTH_STORAGE_KEY);
       if (authData) {
-        this.authResult = JSON.parse(authData);
-        this.authResult.expiresOn = new Date(this.authResult.expiresOn);
+        try {
+          const parsedData = JSON.parse(authData) as OneDriveAuthResult;
+          if (parsedData && typeof parsedData === 'object' && 'accessToken' in parsedData && 'expiresOn' in parsedData) {
+            this.authResult = parsedData;
+            // Convert the expiresOn string back to a Date object
+            this.authResult.expiresOn = new Date(this.authResult.expiresOn);
+          } else {
+            logger.warn('Invalid OneDrive auth data format, resetting');
+            this.authResult = null;
+          }
+        } catch (parseError) {
+          logger.error('Error parsing OneDrive auth data', parseError);
+          this.authResult = null;
+        }
       }
       
       // Load saved tracks
@@ -306,12 +318,22 @@ export class OneDriveStorageProvider extends BaseStorageProvider {
   private isTokenValid(): boolean {
     if (!this.authResult) return false;
     
-    // Check if token is expired (with 5 minute buffer)
-    const now = new Date();
-    const expiresOn = new Date(this.authResult.expiresOn);
-    const bufferTime = 5 * 60 * 1000; // 5 minutes in milliseconds
-    
-    return expiresOn.getTime() - now.getTime() > bufferTime;
+    try {
+      // Check if token is expired (with 5 minute buffer)
+      const now = new Date();
+      
+      // Make sure expiresOn is a valid Date object
+      const expiresOn = this.authResult.expiresOn instanceof Date 
+        ? this.authResult.expiresOn 
+        : new Date(this.authResult.expiresOn);
+      
+      const bufferTime = 5 * 60 * 1000; // 5 minutes in milliseconds
+      
+      return expiresOn.getTime() - now.getTime() > bufferTime;
+    } catch (error) {
+      logger.error('Error validating token', error);
+      return false;
+    }
   }
   
   /**
