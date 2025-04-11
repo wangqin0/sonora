@@ -7,7 +7,7 @@ import * as FileSystem from 'expo-file-system';
 import * as DocumentPicker from 'expo-document-picker';
 import { Audio } from 'expo-av';
 import { Platform } from 'react-native';
-import { v4 as uuidv4 } from 'uuid';
+import uuid from 'react-native-uuid';
 
 import { BaseStorageProvider } from './StorageProvider';
 import { Track } from '../../types';
@@ -120,7 +120,7 @@ export class LocalStorageProvider extends BaseStorageProvider {
         
         // Create a track object
         const track: Track = {
-          id: uuidv4(),
+          id: uuid.v4().toString(),
           title: this.getFileNameWithoutExtension(file.name),
           uri: file.uri,
           source: 'local',
