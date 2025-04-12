@@ -21,7 +21,7 @@ const MiniPlayerBar = () => {
   
   // Handle press on the mini player to open full player
   const handlePress = () => {
-    navigation.navigate('Player');
+    navigation.navigate('Player' as never);
   };
   
   // Handle play/pause button press

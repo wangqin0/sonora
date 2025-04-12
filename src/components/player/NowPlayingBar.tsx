@@ -43,29 +43,29 @@ const NowPlayingBar = () => {
   
   // Handle press on the player to open full player
   const handlePress = () => {
-    navigation.navigate('Player');
+    navigation.navigate('Player' as never);
   };
   
   // Handle play/pause button press
-  const handlePlayPause = (e) => {
+  const handlePlayPause = (e: import('react-native').GestureResponderEvent) => {
     e.stopPropagation(); // Prevent opening the full player
     togglePlayPause();
   };
   
   // Handle next track button press
-  const handleNextTrack = (e) => {
+  const handleNextTrack = (e: import('react-native').GestureResponderEvent) => {
     e.stopPropagation(); // Prevent opening the full player
     nextTrack();
   };
   
   // Handle slider value change
-  const handleSliderValueChange = (value) => {
+  const handleSliderValueChange = (value: number) => {
     setIsSeeking(true);
     setSliderValue(value);
   };
   
   // Handle slider seek complete
-  const handleSliderSlidingComplete = async (value) => {
+  const handleSliderSlidingComplete = async (value: number) => {
     try {
       await seekTo(value);
     } catch (error) {

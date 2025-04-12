@@ -179,7 +179,9 @@ class Logger {
       
       logEntry += '\n';
       
-      await FileSystem.appendAsStringAsync(LOG_FILE_PATH, logEntry);
+      // Read existing content and append new log entry
+      const existingContent = await FileSystem.readAsStringAsync(LOG_FILE_PATH);
+      await FileSystem.writeAsStringAsync(LOG_FILE_PATH, existingContent + logEntry);
     } catch (error) {
       console.error('Failed to write to log file:', error);
     }

@@ -154,9 +154,15 @@ class PlayerService {
   }> {
     if (this.sound) {
       const status = await this.sound.getStatusAsync();
-      this.position = status.positionMillis || 0;
-      this.duration = status.durationMillis || 0;
-      this.isPlaying = status.isPlaying;
+      // Check if status is not an error status before accessing properties
+      if ('positionMillis' in status) {
+        // Check if status is not an error status before accessing properties
+        if ('positionMillis' in status) {
+          this.position = status.positionMillis || 0;
+        }
+        this.duration = status.durationMillis || 0;
+        this.isPlaying = status.isPlaying;
+      }
     }
     
     return {
@@ -240,7 +246,10 @@ class PlayerService {
     this.updateInterval = setInterval(async () => {
       if (this.sound && this.isPlaying) {
         const status = await this.sound.getStatusAsync();
-        this.position = status.positionMillis || 0;
+        // Check if status is not an error status before accessing properties
+        if ('positionMillis' in status) {
+          this.position = status.positionMillis || 0;
+        }
       }
     }, 1000);
   }

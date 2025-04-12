@@ -44,7 +44,7 @@ interface AppState {
   
   // Actions - Player
   playTrack: (track: Track) => Promise<void>;
-  playPlaylist: (playlist: Playlist) => Promise<void>;
+  playPlaylist: (playlist: Playlist, startIndex?: number) => Promise<void>;
   togglePlayPause: () => Promise<void>;
   nextTrack: () => Promise<void>;
   previousTrack: () => Promise<void>;

@@ -97,8 +97,7 @@ const AppNavigator = () => {
           component={PlayerScreen} 
           options={{ 
             headerShown: true,
-            title: 'Now Playing',
-            headerBackTitleVisible: false,
+            title: 'Now Playing'
           }}
         />
         <Stack.Screen 
@@ -107,7 +106,6 @@ const AppNavigator = () => {
           options={({ route }) => ({ 
             headerShown: true,
             title: 'Playlist',
-            headerBackTitleVisible: false,
           })}
         />
         <Stack.Screen 
@@ -115,8 +113,7 @@ const AppNavigator = () => {
           component={StorageProvidersScreen} 
           options={{ 
             headerShown: true,
-            title: 'Storage Providers',
-            headerBackTitleVisible: false,
+            title: 'Storage Providers'
           }}
         />
       </Stack.Navigator>

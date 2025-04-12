@@ -194,7 +194,11 @@ export class LocalStorageProvider extends BaseStorageProvider {
       const status = await sound.getStatusAsync();
       await sound.unloadAsync(); // Clean up
       
-      return status.durationMillis || undefined;
+      // Check if status is not an error status before accessing properties
+      if ('durationMillis' in status) {
+        return status.durationMillis || undefined;
+      }
+      return undefined;
     } catch (error) {
       logger.warn(`Could not get duration for audio file: ${uri}`, error);
       return undefined;

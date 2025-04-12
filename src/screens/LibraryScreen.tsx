@@ -6,14 +6,17 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
+
+import { RootStackParamList } from '../navigation/AppNavigator';
 
 import { useStore } from '../store';
 import { Track, Playlist } from '../types';
 import { logger } from '../utils/logger';
 
 const LibraryScreen = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   const { tracks, playlists, isLibraryLoading, loadLibrary, playTrack, playPlaylist } = useStore();
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<'tracks' | 'playlists'>('tracks');
@@ -50,7 +53,7 @@ const LibraryScreen = () => {
 
   // Handle playlist press
   const handlePlaylistPress = (playlist: Playlist) => {
-    navigation.navigate('PlaylistDetail' as never, { playlistId: playlist.id } as never);
+    navigation.navigate('PlaylistDetail', { playlistId: playlist.id });
   };
 
   // Render track item
