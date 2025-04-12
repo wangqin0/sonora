@@ -45,14 +45,11 @@ jobs:
         key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
         restore-keys: |
           ${{ runner.os }}-node-
-          
-    - name: Install Expo CLI
-      run: npm install -g expo-cli
       
-    - name: Build Expo web
-      run: |
-        if grep -q "\"web\"" package.json; then
-          npx expo export:web
-        else
-          echo "Web build not configured, skipping"
-        fi
+    # - name: Build Expo web
+    #   run: |
+    #     if grep -q "\"web\"" package.json; then
+    #       npx expo export:web
+    #     else
+    #       echo "Web build not configured, skipping"
+    #     fi

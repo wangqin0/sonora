@@ -42,9 +42,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-expo-
 
-      - name: Install Expo CLI
-        run: npm install -g expo-cli
-
       - name: Verify cache
         run: |
           echo "Node modules cached successfully"
