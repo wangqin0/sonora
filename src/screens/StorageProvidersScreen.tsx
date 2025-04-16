@@ -13,7 +13,7 @@ import { StorageProviderInterface } from '../services/storage/StorageProvider';
 import { logger } from '../utils/logger';
 
 const StorageProvidersScreen = () => {
-  const { importLocalTracks } = useStore();
+  const { importLocalTracks, importLocalTracksFromFolder } = useStore();
   const [providers, setProviders] = useState<StorageProviderInterface[]>([]);
   const [loading, setLoading] = useState(true);
   const [connectingProvider, setConnectingProvider] = useState<string | null>(null);
@@ -89,6 +89,25 @@ const StorageProvidersScreen = () => {
     }
   };
 
+  // Handle import from local folder
+  const handleImportLocalFolder = async () => {
+    try {
+      setConnectingProvider('local');
+      const tracks = await importLocalTracksFromFolder();
+      
+      if (tracks.length > 0) {
+        Alert.alert('Success', `Successfully imported ${tracks.length} music files from folder`);
+      } else {
+        Alert.alert('Import Complete', 'No supported music files were found or selected');
+      }
+    } catch (error) {
+      logger.error('Error importing folder', error);
+      Alert.alert('Error', 'Failed to import music files from folder');
+    } finally {
+      setConnectingProvider(null);
+    }
+  };
+
   // Render provider item
   const renderProviderItem = (provider: StorageProviderInterface) => {
     const isConnecting = connectingProvider === provider.getId();
@@ -118,12 +137,22 @@ const StorageProvidersScreen = () => {
         ) : (
           <View style={styles.providerActions}>
             {isLocal ? (
-              <TouchableOpacity 
-                style={styles.actionButton}
-                onPress={handleImportLocalFiles}
-              >
-                <Text style={styles.actionButtonText}>Import</Text>
-              </TouchableOpacity>
+              <>
+                <TouchableOpacity 
+                  style={styles.actionButton}
+                  onPress={handleImportLocalFiles}
+                >
+                  <Ionicons name="document-outline" size={16} color="#fff" style={styles.actionButtonIcon} />
+                  <Text style={styles.actionButtonText}>Import Files</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.actionButton, { marginTop: 8 }]}
+                  onPress={handleImportLocalFolder}
+                >
+                  <Ionicons name="folder-outline" size={16} color="#fff" style={styles.actionButtonIcon} />
+                  <Text style={styles.actionButtonText}>Import Folder</Text>
+                </TouchableOpacity>
+              </>
             ) : (
               <TouchableOpacity 
                 style={styles.actionButton}
@@ -246,18 +275,26 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     backgroundColor: '#6200ee',
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 16,
+    borderRadius: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
   },
   actionButtonText: {
     color: '#fff',
+    fontSize: 14,
     fontWeight: '500',
   },
+  actionButtonIcon: {
+    marginRight: 4,
+  },
   infoContainer: {
-    margin: 16,
-    padding: 16,
+    padding: 20,
+    marginTop: 16,
     backgroundColor: '#fff',
+    marginHorizontal: 16,
     borderRadius: 8,
     elevation: 2,
     shadowColor: '#000',

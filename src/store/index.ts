@@ -41,6 +41,7 @@ interface AppState {
   addTracksToPlaylist: (playlistId: string, tracks: Track[]) => Promise<void>;
   removeTrackFromPlaylist: (playlistId: string, trackId: string) => Promise<void>;
   importLocalTracks: () => Promise<void>;
+  importLocalTracksFromFolder: () => Promise<Track[]>;
   
   // Actions - Player
   playTrack: (track: Track) => Promise<void>;
@@ -234,6 +235,32 @@ export const useStore = create<AppState>((set, get) => ({
     }
   },
   
+  importLocalTracksFromFolder: async () => {
+    try {
+      set({ isLibraryLoading: true });
+      
+      // Import tracks from folder
+      const newTracks = await storageManager.importLocalAudioFilesFromFolder();
+      
+      // Merge with existing tracks
+      const existingTracks = get().tracks;
+      const allTracks = [...existingTracks, ...newTracks];
+      
+      // Remove duplicates by ID
+      const uniqueTracks = Array.from(
+        new Map(allTracks.map(track => [track.id, track])).values()
+      );
+      
+      set({ tracks: uniqueTracks, isLibraryLoading: false });
+      logger.info(`Imported ${newTracks.length} tracks from folder`);
+      return newTracks;
+    } catch (error) {
+      logger.error('Error importing tracks from folder', error);
+      set({ isLibraryLoading: false });
+      throw error;
+    }
+  },
+  
   // Player actions - delegate to playerStore
   playTrack: async (track: Track) => {
     return usePlayerStore.getState().playTrack(track);
@@ -276,16 +303,14 @@ export const useStore = create<AppState>((set, get) => ({
       // Save to AsyncStorage
       await AsyncStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(newSettings));
       
-      // Update state
-      set({ settings: newSettings });
-      
       // Apply settings
       logger.setLogLevel(newSettings.logLevel);
       
-      logger.info('Settings updated');
+      set({ settings: newSettings });
+      logger.info('Updated app settings');
     } catch (error) {
-      logger.error('Error updating settings', error);
+      logger.error('Error updating app settings', error);
       throw error;
     }
-  },
+  }
 }));

@@ -99,7 +99,7 @@ export class LocalStorageProvider extends BaseStorageProvider {
       
       const result = await DocumentPicker.getDocumentAsync({
         type: 'audio/*',
-        copyToCacheDirectory: true,
+        copyToCacheDirectory: false, // We'll handle caching ourselves
         multiple: true
       });
       
@@ -113,19 +113,22 @@ export class LocalStorageProvider extends BaseStorageProvider {
       for (const file of result.assets) {
         // Check if file is an audio file
         const fileExtension = this.getFileExtension(file.name).toLowerCase();
-        if (!SUPPORTED_AUDIO_EXTENSIONS.includes(fileExtension)) {
+        if (!SUPPORTED_AUDIO_EXTENSIONS.includes(`.${fileExtension}`)) {
           logger.warn(`Skipping unsupported file: ${file.name}`);
           continue;
         }
+        
+        // Copy file to cache directory to ensure it's readable
+        const cachePath = await this.copyFileToCacheDirectory(file.uri, file.name);
         
         // Create a track object
         const track: Track = {
           id: uuid.v4().toString(),
           title: this.getFileNameWithoutExtension(file.name),
-          uri: file.uri,
+          uri: cachePath,
           source: 'local',
-          path: file.uri,
-          duration: await this.getAudioDuration(file.uri)
+          path: cachePath,
+          duration: await this.getAudioDuration(cachePath)
         };
         
         // Add to tracks map
@@ -140,6 +143,65 @@ export class LocalStorageProvider extends BaseStorageProvider {
       return newTracks;
     } catch (error) {
       logger.error('Error importing audio files', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Import audio files from a folder in the device
+   */
+  async importAudioFilesFromFolder(): Promise<Track[]> {
+    try {
+      logger.info('Importing audio files from folder');
+      
+      // Use document picker to select multiple files
+      const result = await DocumentPicker.getDocumentAsync({
+        type: '*/*', // Allow all file types, we'll filter them after
+        copyToCacheDirectory: false, // We'll handle caching ourselves
+        multiple: true // Allow multiple selection
+      });
+      
+      if (result.canceled) {
+        logger.info('User canceled folder selection');
+        return [];
+      }
+      
+      const newTracks: Track[] = [];
+      
+      // Process selected files
+      for (const file of result.assets) {
+        // Check if file is an audio file by extension
+        const fileExtension = `.${this.getFileExtension(file.name).toLowerCase()}`;
+        if (!SUPPORTED_AUDIO_EXTENSIONS.includes(fileExtension)) {
+          logger.warn(`Skipping unsupported file: ${file.name}`);
+          continue;
+        }
+        
+        // Copy file to cache directory to ensure it's readable
+        const cachePath = await this.copyFileToCacheDirectory(file.uri, file.name);
+        
+        // Create a track object
+        const track: Track = {
+          id: uuid.v4().toString(),
+          title: this.getFileNameWithoutExtension(file.name),
+          uri: cachePath,
+          source: 'local',
+          path: cachePath,
+          duration: await this.getAudioDuration(cachePath)
+        };
+        
+        // Add to tracks map
+        this.tracks.set(track.id, track);
+        newTracks.push(track);
+      }
+      
+      // Save updated tracks to persistent storage
+      await this.saveTracks();
+      
+      logger.info(`Imported ${newTracks.length} audio files from folder`);
+      return newTracks;
+    } catch (error) {
+      logger.error('Error importing audio files from folder', error);
       throw error;
     }
   }
@@ -192,11 +254,11 @@ export class LocalStorageProvider extends BaseStorageProvider {
     try {
       const { sound } = await Audio.Sound.createAsync({ uri });
       const status = await sound.getStatusAsync();
-      await sound.unloadAsync(); // Clean up
+      await sound.unloadAsync(); // Clean up resources
       
-      // Check if status is not an error status before accessing properties
+      // Check if the status is not an error status
       if ('durationMillis' in status) {
-        return status.durationMillis || undefined;
+        return status.durationMillis;
       }
       return undefined;
     } catch (error) {
@@ -206,16 +268,47 @@ export class LocalStorageProvider extends BaseStorageProvider {
   }
   
   /**
-   * Get file extension from filename
+   * Copy a file to the app's cache directory
    */
-  private getFileExtension(filename: string): string {
-    return filename.slice(((filename.lastIndexOf('.') - 1) >>> 0) + 1);
+  private async copyFileToCacheDirectory(uri: string, fileName: string): Promise<string> {
+    try {
+      // Ensure the audio cache directory exists
+      const audioCacheDir = `${FileSystem.cacheDirectory}audio/`;
+      const dirInfo = await FileSystem.getInfoAsync(audioCacheDir);
+      
+      if (!dirInfo.exists) {
+        await FileSystem.makeDirectoryAsync(audioCacheDir, { intermediates: true });
+      }
+      
+      // Create a unique filename to prevent collisions
+      const uniqueFileName = `${Date.now()}_${fileName}`;
+      const destinationUri = `${audioCacheDir}${uniqueFileName}`;
+      
+      // Copy the file
+      await FileSystem.copyAsync({
+        from: uri,
+        to: destinationUri
+      });
+      
+      logger.debug(`Copied file to cache: ${destinationUri}`);
+      return destinationUri;
+    } catch (error) {
+      logger.error(`Failed to copy file to cache: ${fileName}`, error);
+      throw error;
+    }
   }
   
   /**
-   * Get filename without extension
+   * Get the file extension from a filename
+   */
+  private getFileExtension(filename: string): string {
+    return filename.slice(((filename.lastIndexOf('.') - 1) >>> 0) + 2);
+  }
+  
+  /**
+   * Get the filename without extension
    */
   private getFileNameWithoutExtension(filename: string): string {
-    return filename.replace(/\.[^/.]+$/, '');
+    return filename.split('.').slice(0, -1).join('.');
   }
 }

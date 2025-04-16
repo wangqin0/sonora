@@ -226,6 +226,28 @@ class StorageManager {
       throw error;
     }
   }
+
+  /**
+   * Import audio files from a folder in local storage
+   */
+  public async importLocalAudioFilesFromFolder(): Promise<Track[]> {
+    if (!this.initialized) {
+      await this.initialize();
+    }
+    
+    const localProvider = this.getProvider('local') as LocalStorageProvider;
+    
+    if (!localProvider) {
+      throw new Error('Local storage provider not found');
+    }
+    
+    try {
+      return await localProvider.importAudioFilesFromFolder();
+    } catch (error) {
+      logger.error('Error importing local audio files from folder', error);
+      throw error;
+    }
+  }
 }
 
 // Export singleton instance
