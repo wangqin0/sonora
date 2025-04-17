@@ -6,6 +6,7 @@ import { Audio } from 'expo-av';
 
 import AppNavigator from './src/navigation/AppNavigator';
 import { useStore } from './src/store';
+import { enableDebugLogging } from './src/utils/debugHelper';
 
 export default function App() {
   // Initialize audio session on app start
@@ -23,6 +24,9 @@ export default function App() {
     };
 
     setupAudio();
+    
+    // Enable debug logging for troubleshooting
+    enableDebugLogging();
   }, []);
 
   return (

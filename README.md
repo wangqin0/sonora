@@ -44,6 +44,16 @@ This will start the Expo development server. You can run the app on:
 - Android emulator
 - Physical device using the Expo Go app
 
+### Building the App
+
+Before building the app for production or development testing, run the prebuild command to ensure all native configuration is properly synced:
+
+```
+npx expo prebuild
+```
+
+This step is crucial as it syncs configuration from app.config.js to the native iOS and Android projects.
+
 ## Project Structure
 
 - `/src/components` - Reusable UI components
@@ -60,6 +70,10 @@ Sonora supports multiple storage providers:
 
 1. **Local Storage** - Access music files stored on your device
 2. **OneDrive** - Stream music from your Microsoft OneDrive account
+   - OneDrive sync only searches for audio files in the following locations:
+     - `root/sonora`
+     - `root/music`
+     - `root/Music`
 
 ## License
 

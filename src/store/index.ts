@@ -18,7 +18,13 @@ const DEFAULT_SETTINGS: AppSettings = {
   theme: 'system',
   audioQuality: 'auto',
   downloadStrategy: 'wifi-only',
-  logLevel: LogLevel.INFO
+  logLevel: LogLevel.INFO,
+  oneDriveSync: {
+    enabled: false,
+    interval: 3600, // 1 hour
+    onAppStart: true,
+    onWifiOnly: true
+  }
 };
 
 interface AppState {

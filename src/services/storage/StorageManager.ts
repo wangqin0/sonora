@@ -8,6 +8,7 @@ import { OneDriveStorageProvider } from './OneDriveStorageProvider';
 import { StorageProviderInterface } from './StorageProvider';
 import { Track } from '../../types';
 import { logger } from '../../utils/logger';
+import { ONEDRIVE_CLIENT_ID } from '../../config/onedrive';
 
 class StorageManager {
   private static instance: StorageManager;
@@ -19,7 +20,7 @@ class StorageManager {
     
     // Register default providers
     this.registerProvider(new LocalStorageProvider());
-    this.registerProvider(new OneDriveStorageProvider());
+    this.registerProvider(new OneDriveStorageProvider(ONEDRIVE_CLIENT_ID));
   }
   
   public static getInstance(): StorageManager {

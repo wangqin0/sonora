@@ -1,0 +1,34 @@
+{
+  "cli": {
+    "version": ">= 5.9.3"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "ios": {
+        "prebuildCommand": "npx expo prebuild"
+      },
+      "android": {
+        "prebuildCommand": "npx expo prebuild"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "ios": {
+        "prebuildCommand": "npx expo prebuild"
+      },
+      "android": {
+        "prebuildCommand": "npx expo prebuild"
+      }
+    },
+    "production": {
+      "ios": {
+        "prebuildCommand": "npx expo prebuild"
+      },
+      "android": {
+        "prebuildCommand": "npx expo prebuild"
+      }
+    }
+  }
+} 

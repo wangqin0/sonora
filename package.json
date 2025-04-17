@@ -3,14 +3,16 @@
   "version": "1.0.0",
   "main": "index.ts",
   "scripts": {
-    "start": "expo start",
-    "android": "expo run:android",
-    "ios": "expo run:ios",
-    "web": "expo start --web"
+    "start": "npx expo start",
+    "android": "npx expo prebuild && expo run:android",
+    "ios": "npx expo prebuild && expo run:ios",
+    "web": "npx expo start --web",
+    "prebuild": "npx expo prebuild"
   },
   "dependencies": {
     "@microsoft/microsoft-graph-client": "^3.0.7",
     "@react-native-async-storage/async-storage": "1.23.1",
+    "@react-native-community/netinfo": "^11.3.0",
     "@react-native-community/slider": "4.5.5",
     "@react-navigation/bottom-tabs": "^7.3.10",
     "@react-navigation/native": "^7.1.6",
@@ -48,5 +50,16 @@
     "eslint-plugin-react-native": "^5.0.0",
     "typescript": "^5.3.3"
   },
-  "private": true
+  "private": true,
+  "expo": {
+    "doctor": {
+      "reactNativeDirectoryCheck": {
+        "listUnknownPackages": false
+      },
+      "checkForNativeConfigInAppConfig": false,
+      "appConfigCheck": {
+        "enabled": false
+      }
+    }
+  }
 }

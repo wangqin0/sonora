@@ -71,4 +71,10 @@ export interface AppSettings {
   audioQuality: 'auto' | 'high' | 'medium' | 'low';
   downloadStrategy: 'wifi-only' | 'always' | 'never';
   logLevel: LogLevel;
+  oneDriveSync: {
+    enabled: boolean;
+    interval: number; // in seconds
+    onAppStart: boolean;
+    onWifiOnly: boolean;
+  };
 }
