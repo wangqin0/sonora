@@ -95,29 +95,50 @@ export class LocalStorageProvider extends BaseStorageProvider {
         return track.uri;
       }
       
-      // File doesn't exist at the saved path, try to find it in the current cache directory
+      // File doesn't exist at the saved path, try to find it in other directories
       logger.warn(`Local file not found at path: ${track.uri}`);
       
       // Extract filename from the URI
       const uriParts = track.uri.split('/');
       const fileName = uriParts[uriParts.length - 1];
       
-      // Check if file exists in current cache directory
-      const audioCacheDir = `${FileSystem.cacheDirectory}audio/`;
-      const newPath = `${audioCacheDir}${fileName}`;
-      const newFileInfo = await FileSystem.getInfoAsync(newPath);
+      // Check if file exists in current document directory (new location)
+      const audioDocDir = `${FileSystem.documentDirectory}audio/`;
+      const docPath = `${audioDocDir}${fileName}`;
+      const docFileInfo = await FileSystem.getInfoAsync(docPath);
       
-      if (newFileInfo.exists) {
-        logger.info(`Found file in current cache directory: ${newPath}`);
+      if (docFileInfo.exists) {
+        logger.info(`Found file in document directory: ${docPath}`);
         
         // Update the track's URI and path for future use
-        track.uri = newPath;
-        track.path = newPath;
+        track.uri = docPath;
+        track.path = docPath;
         
         // Save the updated track info
         await this.saveTracks();
         
-        return newPath;
+        return docPath;
+      }
+      
+      // Check if file exists in legacy cache directory
+      const audioCacheDir = `${FileSystem.cacheDirectory}audio/`;
+      const cachePath = `${audioCacheDir}${fileName}`;
+      const cacheFileInfo = await FileSystem.getInfoAsync(cachePath);
+      
+      if (cacheFileInfo.exists) {
+        logger.info(`Found file in cache directory: ${cachePath}`);
+        
+        // Copy the file to the document directory for persistence
+        const docPath = await this.copyFileToDocumentDirectory(cachePath, fileName);
+        
+        // Update the track's URI and path for future use
+        track.uri = docPath;
+        track.path = docPath;
+        
+        // Save the updated track info
+        await this.saveTracks();
+        
+        return docPath;
       }
       
       // If we can't find the file, throw an error
@@ -156,8 +177,8 @@ export class LocalStorageProvider extends BaseStorageProvider {
           continue;
         }
         
-        // Copy file to cache directory to ensure it's readable
-        const cachePath = await this.copyFileToCacheDirectory(file.uri, file.name);
+        // Copy file to document directory to ensure it's readable
+        const cachePath = await this.copyFileToDocumentDirectory(file.uri, file.name);
         
         // Create a track object
         const track: Track = {
@@ -215,8 +236,8 @@ export class LocalStorageProvider extends BaseStorageProvider {
           continue;
         }
         
-        // Copy file to cache directory to ensure it's readable
-        const cachePath = await this.copyFileToCacheDirectory(file.uri, file.name);
+        // Copy file to document directory to ensure it's readable
+        const cachePath = await this.copyFileToDocumentDirectory(file.uri, file.name);
         
         // Create a track object
         const track: Track = {
@@ -306,21 +327,21 @@ export class LocalStorageProvider extends BaseStorageProvider {
   }
   
   /**
-   * Copy a file to the app's cache directory
+   * Copy a file to the app's document directory (persistent storage)
    */
-  private async copyFileToCacheDirectory(uri: string, fileName: string): Promise<string> {
+  private async copyFileToDocumentDirectory(uri: string, fileName: string): Promise<string> {
     try {
-      // Ensure the audio cache directory exists
-      const audioCacheDir = `${FileSystem.cacheDirectory}audio/`;
-      const dirInfo = await FileSystem.getInfoAsync(audioCacheDir);
+      // Ensure the audio directory exists in document storage (persistent)
+      const audioDir = `${FileSystem.documentDirectory}audio/`;
+      const dirInfo = await FileSystem.getInfoAsync(audioDir);
       
       if (!dirInfo.exists) {
-        await FileSystem.makeDirectoryAsync(audioCacheDir, { intermediates: true });
+        await FileSystem.makeDirectoryAsync(audioDir, { intermediates: true });
       }
       
       // Create a unique filename to prevent collisions
       const uniqueFileName = `${Date.now()}_${fileName}`;
-      const destinationUri = `${audioCacheDir}${uniqueFileName}`;
+      const destinationUri = `${audioDir}${uniqueFileName}`;
       
       // Copy the file
       await FileSystem.copyAsync({
@@ -328,10 +349,10 @@ export class LocalStorageProvider extends BaseStorageProvider {
         to: destinationUri
       });
       
-      logger.debug(`Copied file to cache: ${destinationUri}`);
+      logger.debug(`Copied file to document storage: ${destinationUri}`);
       return destinationUri;
     } catch (error) {
-      logger.error(`Failed to copy file to cache: ${fileName}`, error);
+      logger.error(`Failed to copy file to document storage: ${fileName}`, error);
       throw error;
     }
   }

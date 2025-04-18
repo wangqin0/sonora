@@ -26,7 +26,7 @@ import { logOAuthDetails } from '../../utils/debugHelper';
 const ONEDRIVE_TRACKS_STORAGE_KEY = '@sonora/onedrive_tracks';
 const ONEDRIVE_AUTH_STORAGE_KEY = '@sonora/onedrive_auth';
 const ONEDRIVE_SYNC_SETTINGS_KEY = '@sonora/onedrive_sync_settings';
-const ONEDRIVE_CACHE_DIR = FileSystem.cacheDirectory + 'onedrive/';
+const ONEDRIVE_DOCUMENT_DIR = FileSystem.documentDirectory + 'onedrive/';
 const SUPPORTED_AUDIO_EXTENSIONS = ['.mp3', '.m4a', '.aac', '.wav', '.ogg', '.flac', '.wma', '.alac', '.aiff'];
 
 // Microsoft Graph API endpoints
@@ -313,28 +313,47 @@ export class OneDriveStorageProvider extends BaseStorageProvider {
       // Create consistent file name for caching
       const fileName = `onedrive-${track.id}${fileExtension}`;
       
-      // Use cacheDirectory for consistent paths
-      const cachedPath = `${ONEDRIVE_CACHE_DIR}${fileName}`;
-      const cacheInfo = await FileSystem.getInfoAsync(cachedPath);
+      // Check if file exists in document directory (new location)
+      const docPath = `${ONEDRIVE_DOCUMENT_DIR}${fileName}`;
+      const docInfo = await FileSystem.getInfoAsync(docPath);
+      
+      if (docInfo.exists) {
+        logger.debug(`Using cached file for ${track.title} from document directory`);
+        return docPath;
+      }
+      
+      // Check if file exists in legacy cache directory
+      const legacyCacheDir = `${FileSystem.cacheDirectory}onedrive/`;
+      const cachePath = `${legacyCacheDir}${fileName}`;
+      const cacheInfo = await FileSystem.getInfoAsync(cachePath);
       
       if (cacheInfo.exists) {
-        logger.debug(`Using cached file for ${track.title}`);
-        // Return the exact same path that was used to save the file
-        return cachedPath;
+        logger.debug(`Found file in legacy cache directory, moving to document directory: ${track.title}`);
+        
+        // Ensure document directory exists
+        await this.ensureDocumentDirectory();
+        
+        // Copy file to document directory
+        await FileSystem.copyAsync({
+          from: cachePath,
+          to: docPath
+        });
+        
+        return docPath;
       }
       
       // Download the file
       logger.info(`Downloading file from OneDrive: ${track.title}`);
       
-      // Ensure cache directory exists
-      await this.ensureCacheDirectory();
+      // Ensure document directory exists
+      await this.ensureDocumentDirectory();
       
       // Get download URL
       const downloadUrl = await this.getDownloadUrl(track);
       logger.debug(`Download URL: ${downloadUrl}`);
       
       // Download the file
-      const downloadResult = await FileSystem.downloadAsync(downloadUrl, cachedPath);
+      const downloadResult = await FileSystem.downloadAsync(downloadUrl, docPath);
       logger.debug(`File downloaded to: ${downloadResult.uri}`);
       
       return downloadResult.uri;
@@ -409,8 +428,8 @@ export class OneDriveStorageProvider extends BaseStorageProvider {
         logger.info(`Loaded ${tracks.length} tracks from OneDrive cache`);
       }
       
-      // Ensure cache directory exists
-      await this.ensureCacheDirectory();
+      // Ensure document directory exists
+      await this.ensureDocumentDirectory();
       
       // If sync on app start is enabled and we are connected, trigger a sync
       if (this.syncSettings.syncEnabled && 
@@ -910,18 +929,18 @@ export class OneDriveStorageProvider extends BaseStorageProvider {
   }
   
   /**
-   * Ensure the cache directory exists
+   * Ensure the document directory exists
    */
-  private async ensureCacheDirectory(): Promise<void> {
+  private async ensureDocumentDirectory(): Promise<void> {
     try {
-      const dirInfo = await FileSystem.getInfoAsync(ONEDRIVE_CACHE_DIR);
+      const dirInfo = await FileSystem.getInfoAsync(ONEDRIVE_DOCUMENT_DIR);
       
       if (!dirInfo.exists) {
-        await FileSystem.makeDirectoryAsync(ONEDRIVE_CACHE_DIR, { intermediates: true });
-        logger.debug('Created OneDrive cache directory');
+        await FileSystem.makeDirectoryAsync(ONEDRIVE_DOCUMENT_DIR, { intermediates: true });
+        logger.debug('Created OneDrive document directory');
       }
     } catch (error) {
-      logger.error('Error ensuring cache directory exists', error);
+      logger.error('Error ensuring document directory exists', error);
       throw error;
     }
   }
