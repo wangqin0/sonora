@@ -8,6 +8,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
+import { Platform } from 'react-native';
 
 // Import screens
 import LibraryScreen from '../screens/LibraryScreen';
@@ -19,6 +20,8 @@ import StorageProvidersScreen from '../screens/StorageProvidersScreen';
 
 // Import components
 import NowPlayingBar from '../components/player/NowPlayingBar';
+import { useTheme } from '../theme/ThemeContext';
+import { StatusBar } from 'expo-status-bar';
 
 // Define navigation types
 export type RootStackParamList = {
@@ -40,6 +43,8 @@ const Tab = createBottomTabNavigator<MainTabParamList>();
 
 // Main tab navigator
 const MainTabNavigator = () => {
+  const { theme, isDarkMode } = useTheme();
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -58,8 +63,18 @@ const MainTabNavigator = () => {
 
           return <Ionicons name={iconName as any} size={size} color={color} />;
         },
-        tabBarActiveTintColor: '#6200ee',
-        tabBarInactiveTintColor: 'gray',
+        tabBarActiveTintColor: theme.primary,
+        tabBarInactiveTintColor: theme.textSecondary,
+        tabBarStyle: {
+          backgroundColor: theme.tabBarBackground,
+          borderTopColor: theme.border,
+        },
+        headerStyle: {
+          backgroundColor: theme.background,
+          borderBottomColor: theme.border,
+          borderBottomWidth: 1,
+        },
+        headerTintColor: theme.text,
         headerShown: true,
       })}
     >
@@ -84,11 +99,83 @@ const MainTabNavigator = () => {
 
 // Root stack navigator
 const AppNavigator = () => {
+  const { theme, isDarkMode } = useTheme();
+
   return (
-    <NavigationContainer>
+    <NavigationContainer
+      theme={{
+        dark: isDarkMode,
+        colors: {
+          primary: theme.primary,
+          background: theme.background,
+          card: theme.cardBackground,
+          text: theme.text,
+          border: theme.border,
+          notification: theme.error,
+        },
+        fonts: Platform.select({
+          ios: {
+            regular: {
+              fontFamily: 'System',
+              fontWeight: '400',
+            },
+            medium: {
+              fontFamily: 'System',
+              fontWeight: '500',
+            },
+            bold: {
+              fontFamily: 'System',
+              fontWeight: '600',
+            },
+            heavy: {
+              fontFamily: 'System',
+              fontWeight: '700',
+            },
+          },
+          android: {
+            regular: {
+              fontFamily: 'sans-serif',
+              fontWeight: 'normal',
+            },
+            medium: {
+              fontFamily: 'sans-serif-medium',
+              fontWeight: 'normal',
+            },
+            bold: {
+              fontFamily: 'sans-serif',
+              fontWeight: '600',
+            },
+            heavy: {
+              fontFamily: 'sans-serif',
+              fontWeight: '700',
+            },
+          },
+          default: {
+            regular: {
+              fontFamily: 'System',
+              fontWeight: '400',
+            },
+            medium: {
+              fontFamily: 'System',
+              fontWeight: '500',
+            },
+            bold: {
+              fontFamily: 'System',
+              fontWeight: '600',
+            },
+            heavy: {
+              fontFamily: 'System',
+              fontWeight: '700',
+            },
+          },
+        }),
+      }}
+    >
+      <StatusBar style={theme.statusBar as any} />
       <Stack.Navigator
         screenOptions={{
           headerShown: false,
+          cardStyle: { backgroundColor: theme.background },
         }}
       >
         <Stack.Screen name="MainTabs" component={MainTabNavigator} />
@@ -97,7 +184,12 @@ const AppNavigator = () => {
           component={PlayerScreen} 
           options={{ 
             headerShown: true,
-            title: 'Now Playing'
+            title: 'Now Playing',
+            headerStyle: {
+              backgroundColor: theme.background,
+              borderBottomColor: theme.border,
+            },
+            headerTintColor: theme.text,
           }}
         />
         <Stack.Screen 
@@ -106,6 +198,11 @@ const AppNavigator = () => {
           options={({ route }) => ({ 
             headerShown: true,
             title: 'Playlist',
+            headerStyle: {
+              backgroundColor: theme.background,
+              borderBottomColor: theme.border,
+            },
+            headerTintColor: theme.text,
           })}
         />
         <Stack.Screen 
@@ -113,7 +210,12 @@ const AppNavigator = () => {
           component={StorageProvidersScreen} 
           options={{ 
             headerShown: true,
-            title: 'Storage Providers'
+            title: 'Storage Providers',
+            headerStyle: {
+              backgroundColor: theme.background,
+              borderBottomColor: theme.border,
+            },
+            headerTintColor: theme.text,
           }}
         />
       </Stack.Navigator>

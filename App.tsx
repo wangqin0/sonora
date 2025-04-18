@@ -7,6 +7,7 @@ import { Audio } from 'expo-av';
 import AppNavigator from './src/navigation/AppNavigator';
 import { useStore } from './src/store';
 import { enableDebugLogging } from './src/utils/debugHelper';
+import { ThemeProvider } from './src/theme/ThemeContext';
 
 export default function App() {
   // Initialize audio session on app start
@@ -32,8 +33,10 @@ export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <AppNavigator />
-        <StatusBar style="auto" />
+        <ThemeProvider>
+          <AppNavigator />
+          <StatusBar style="auto" />
+        </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

@@ -19,9 +19,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../store';
 import { Track } from '../types';
 import { logger } from '../utils/logger';
+import { useTheme } from '../theme/ThemeContext';
 
 const SearchScreen = () => {
   const { tracks, playTrack } = useStore();
+  const { theme } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Track[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -71,22 +73,25 @@ const SearchScreen = () => {
 
   // Render track item
   const renderTrackItem = ({ item }: { item: Track }) => (
-    <TouchableOpacity style={styles.trackItem} onPress={() => handleTrackPress(item)}>
-      <View style={styles.trackIconContainer}>
-        <Ionicons name="musical-note" size={24} color="#6200ee" />
+    <TouchableOpacity 
+      style={[styles.trackItem, { borderBottomColor: theme.border }]} 
+      onPress={() => handleTrackPress(item)}
+    >
+      <View style={[styles.trackIconContainer, { backgroundColor: theme.surface }]}>
+        <Ionicons name="musical-note" size={24} color={theme.primary} />
       </View>
       <View style={styles.trackInfo}>
-        <Text style={styles.trackTitle} numberOfLines={1}>{item.title}</Text>
-        <Text style={styles.trackArtist} numberOfLines={1}>
+        <Text style={[styles.trackTitle, { color: theme.text }]} numberOfLines={1}>{item.title}</Text>
+        <Text style={[styles.trackArtist, { color: theme.textSecondary }]} numberOfLines={1}>
           {item.artist || 'Unknown artist'}
           {item.album ? ` • ${item.album}` : ''}
         </Text>
-        <Text style={styles.trackSource}>
+        <Text style={[styles.trackSource, { color: theme.textSecondary }]}>
           {item.source === 'local' ? 'Local' : 'OneDrive'}
         </Text>
       </View>
       <TouchableOpacity style={styles.trackAction}>
-        <Ionicons name="play" size={20} color="#6200ee" />
+        <Ionicons name="play" size={20} color={theme.primary} />
       </TouchableOpacity>
     </TouchableOpacity>
   );
@@ -96,8 +101,8 @@ const SearchScreen = () => {
     if (isSearching) {
       return (
         <View style={styles.emptyContainer}>
-          <ActivityIndicator size="large" color="#6200ee" />
-          <Text style={styles.emptyText}>Searching...</Text>
+          <ActivityIndicator size="large" color={theme.primary} />
+          <Text style={[styles.emptyText, { color: theme.text }]}>Searching...</Text>
         </View>
       );
     }
@@ -105,30 +110,31 @@ const SearchScreen = () => {
     if (searchQuery.trim() && !searchResults.length) {
       return (
         <View style={styles.emptyContainer}>
-          <Ionicons name="search-outline" size={64} color="#6200ee" />
-          <Text style={styles.emptyText}>No results found</Text>
-          <Text style={styles.emptySubtext}>Try a different search term</Text>
+          <Ionicons name="search-outline" size={64} color={theme.primary} />
+          <Text style={[styles.emptyText, { color: theme.text }]}>No results found</Text>
+          <Text style={[styles.emptySubtext, { color: theme.textSecondary }]}>Try a different search term</Text>
         </View>
       );
     }
 
     return (
       <View style={styles.emptyContainer}>
-        <Ionicons name="search" size={64} color="#6200ee" />
-        <Text style={styles.emptyText}>Search your music</Text>
-        <Text style={styles.emptySubtext}>Find songs by title, artist, or album</Text>
+        <Ionicons name="search" size={64} color={theme.primary} />
+        <Text style={[styles.emptyText, { color: theme.text }]}>Search your music</Text>
+        <Text style={[styles.emptySubtext, { color: theme.textSecondary }]}>Find songs by title, artist, or album</Text>
       </View>
     );
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       {/* Search input */}
-      <View style={styles.searchContainer}>
-        <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
+      <View style={[styles.searchContainer, { backgroundColor: theme.surface }]}>
+        <Ionicons name="search" size={20} color={theme.textSecondary} style={styles.searchIcon} />
         <TextInput
-          style={styles.searchInput}
+          style={[styles.searchInput, { color: theme.text }]}
           placeholder="Search songs, artists, albums"
+          placeholderTextColor={theme.textSecondary}
           value={searchQuery}
           onChangeText={setSearchQuery}
           autoCapitalize="none"
@@ -138,7 +144,7 @@ const SearchScreen = () => {
         />
         {searchQuery.length > 0 && (
           <TouchableOpacity onPress={handleClearSearch} style={styles.clearButton}>
-            <Ionicons name="close-circle" size={20} color="#666" />
+            <Ionicons name="close-circle" size={20} color={theme.textSecondary} />
           </TouchableOpacity>
         )}
       </View>
@@ -148,7 +154,7 @@ const SearchScreen = () => {
         data={searchResults}
         renderItem={renderTrackItem}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, searchResults.length === 0 ? { flex: 1 } : null]}
         ListEmptyComponent={renderEmptyState}
       />
     </View>
@@ -158,12 +164,10 @@ const SearchScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f0f0f0',
     borderRadius: 8,
     margin: 16,
     paddingHorizontal: 12,
@@ -190,13 +194,11 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
   },
   trackIconContainer: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#f0f0f0',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -208,17 +210,14 @@ const styles = StyleSheet.create({
   trackTitle: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#000',
     marginBottom: 2,
   },
   trackArtist: {
     fontSize: 14,
-    color: '#666',
     marginBottom: 2,
   },
   trackSource: {
     fontSize: 12,
-    color: '#999',
   },
   trackAction: {
     padding: 8,
@@ -232,13 +231,11 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 18,
     fontWeight: '500',
-    color: '#000',
     marginTop: 16,
     textAlign: 'center',
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#666',
     marginTop: 8,
     textAlign: 'center',
   },
