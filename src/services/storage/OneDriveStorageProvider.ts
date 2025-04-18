@@ -1061,4 +1061,96 @@ export class OneDriveStorageProvider extends BaseStorageProvider {
   private getFileNameWithoutExtension(filename: string): string {
     return filename.split('.').slice(0, -1).join('.');
   }
+
+  /**
+   * Download all tracks from OneDrive to local storage
+   * Returns a result with success status, number of tracks downloaded, and optional error message
+   */
+  async downloadAllTracks(): Promise<{success: boolean, downloaded: number, message?: string}> {
+    try {
+      if (!await this.isConnected()) {
+        return {
+          success: false,
+          downloaded: 0,
+          message: 'Not connected to OneDrive'
+        };
+      }
+      
+      // Get all tracks that haven't been downloaded yet
+      const allTracks = Array.from(this.tracks.values());
+      if (allTracks.length === 0) {
+        return {
+          success: true,
+          downloaded: 0,
+          message: 'No tracks found in OneDrive'
+        };
+      }
+      
+      // Ensure document directory exists
+      await this.ensureDocumentDirectory();
+      
+      let downloadedCount = 0;
+      const errors: string[] = [];
+      
+      // Download each track
+      for (const track of allTracks) {
+        try {
+          // Extract file extension from the path or title
+          let fileExtension = '';
+          if (track.path && track.path.includes('.')) {
+            fileExtension = `.${this.getFileExtension(track.path)}`;
+          } else if (track.title && track.title.includes('.')) {
+            fileExtension = `.${this.getFileExtension(track.title)}`;
+          } else {
+            // Default to .mp3 if no extension found
+            fileExtension = '.mp3';
+          }
+          
+          // Create consistent file name for caching
+          const fileName = `onedrive-${track.id}${fileExtension}`;
+          const docPath = `${ONEDRIVE_DOCUMENT_DIR}${fileName}`;
+          
+          // Check if file already exists
+          const docInfo = await FileSystem.getInfoAsync(docPath);
+          if (docInfo.exists) {
+            // File already downloaded, skip
+            continue;
+          }
+          
+          // Get download URL and download the file
+          const downloadUrl = await this.getDownloadUrl(track);
+          await FileSystem.downloadAsync(downloadUrl, docPath);
+          
+          // Extract metadata and update track
+          await this.extractAndUpdateMetadata(track, docPath);
+          
+          // Increment counter
+          downloadedCount++;
+        } catch (error) {
+          logger.error(`Error downloading track: ${track.title}`, error);
+          errors.push(track.title);
+        }
+      }
+      
+      if (errors.length > 0) {
+        return {
+          success: downloadedCount > 0,
+          downloaded: downloadedCount,
+          message: `Downloaded ${downloadedCount} tracks. Failed to download ${errors.length} tracks.`
+        };
+      }
+      
+      return {
+        success: true,
+        downloaded: downloadedCount
+      };
+    } catch (error) {
+      logger.error('Error downloading all tracks', error);
+      return {
+        success: false,
+        downloaded: 0,
+        message: 'Error downloading tracks: ' + (error instanceof Error ? error.message : String(error))
+      };
+    }
+  }
 }

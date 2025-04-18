@@ -3,8 +3,8 @@
  * Allows users to connect to different storage sources
  */
 
-import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, ScrollView, Switch } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -14,6 +14,7 @@ import { StorageProviderInterface } from '../services/storage/StorageProvider';
 import { OneDriveStorageProvider } from '../services/storage/OneDriveStorageProvider';
 import { logger } from '../utils/logger';
 import { SyncStatus } from '../config/onedrive';
+import { useTheme } from '../theme/ThemeContext';
 
 const StorageProvidersScreen = () => {
   const { importLocalTracks, importLocalTracksFromFolder } = useStore();
@@ -21,14 +22,10 @@ const StorageProvidersScreen = () => {
   const [loading, setLoading] = useState(true);
   const [connectingProvider, setConnectingProvider] = useState<string | null>(null);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>(SyncStatus.IDLE);
-  const [syncEnabled, setSyncEnabled] = useState(false);
-  const [syncSettings, setSyncSettings] = useState({
-    syncOnAppStart: true,
-    syncOnWifiOnly: true,
-    syncInterval: 3600,
-  });
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
   const [oneDriveConnected, setOneDriveConnected] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const { theme } = useTheme();
 
   // Add insets hook
   const insets = useSafeAreaInsets();
@@ -42,7 +39,7 @@ const StorageProvidersScreen = () => {
         const allProviders = storageManager.getAllProviders();
         setProviders(allProviders);
         
-        // Get OneDrive provider to check sync settings
+        // Get OneDrive provider to check connection status
         const oneDriveProvider = storageManager.getProvider('onedrive') as OneDriveStorageProvider;
         if (oneDriveProvider) {
           // Check connection status
@@ -55,15 +52,9 @@ const StorageProvidersScreen = () => {
           // Get current sync status
           setSyncStatus(oneDriveProvider.getSyncStatus());
           
-          // Get current sync settings
-          const currentSettings = oneDriveProvider.getSyncSettings();
-          setSyncEnabled(currentSettings.syncEnabled);
-          setSyncSettings({
-            syncOnAppStart: currentSettings.syncOnAppStart,
-            syncOnWifiOnly: currentSettings.syncOnWifiOnly,
-            syncInterval: currentSettings.syncInterval,
-          });
-          setLastSyncTime(currentSettings.lastSyncTime);
+          // Get last sync time if available
+          const settings = oneDriveProvider.getSyncSettings();
+          setLastSyncTime(settings.lastSyncTime);
         }
       } catch (error) {
         logger.error('Error loading storage providers', error);
@@ -87,18 +78,12 @@ const StorageProvidersScreen = () => {
         const allProviders = storageManager.getAllProviders();
         setProviders(allProviders);
         
-        // If OneDrive, get sync settings
+        // If OneDrive, update connection status
         if (providerId === 'onedrive') {
           setOneDriveConnected(true);
           const oneDriveProvider = storageManager.getProvider('onedrive') as OneDriveStorageProvider;
-          const currentSettings = oneDriveProvider.getSyncSettings();
-          setSyncEnabled(currentSettings.syncEnabled);
-          setSyncSettings({
-            syncOnAppStart: currentSettings.syncOnAppStart,
-            syncOnWifiOnly: currentSettings.syncOnWifiOnly,
-            syncInterval: currentSettings.syncInterval,
-          });
-          setLastSyncTime(currentSettings.lastSyncTime);
+          const settings = oneDriveProvider.getSyncSettings();
+          setLastSyncTime(settings.lastSyncTime);
         }
       } else {
         Alert.alert('Connection Failed', 'Could not connect to the storage provider');
@@ -121,10 +106,9 @@ const StorageProvidersScreen = () => {
       const allProviders = storageManager.getAllProviders();
       setProviders(allProviders);
       
-      // If OneDrive, reset sync UI
+      // If OneDrive, reset connection status
       if (providerId === 'onedrive') {
         setOneDriveConnected(false);
-        setSyncEnabled(false);
         setLastSyncTime(null);
       }
     } catch (error) {
@@ -193,53 +177,37 @@ const StorageProvidersScreen = () => {
     }
   };
 
-  // Handle toggle sync enabled
-  const handleToggleSyncEnabled = useCallback(async (value: boolean) => {
+  // Handle download all non-local songs
+  const handleDownloadAllSongs = async () => {
     try {
-      setSyncEnabled(value);
+      setIsDownloading(true);
       const oneDriveProvider = storageManager.getProvider('onedrive') as OneDriveStorageProvider;
-      if (oneDriveProvider) {
-        await oneDriveProvider.updateSyncSettings({ syncEnabled: value });
+      
+      if (!oneDriveProvider) {
+        logger.error('OneDrive provider not found');
+        Alert.alert('Error', 'OneDrive provider not available');
+        return;
+      }
+      
+      if (!oneDriveConnected) {
+        logger.info('Cannot download - OneDrive not connected');
+        Alert.alert('Not Connected', 'Please connect to OneDrive first');
+        return;
+      }
+      
+      const result = await oneDriveProvider.downloadAllTracks();
+      if (result.success) {
+        Alert.alert('Download Complete', `Successfully downloaded ${result.downloaded} songs from OneDrive.`);
+      } else {
+        Alert.alert('Download Failed', result.message || 'Failed to download songs from OneDrive');
       }
     } catch (error) {
-      logger.error('Error updating sync settings', error);
-      // Revert UI
-      setSyncEnabled(!value);
-      Alert.alert('Error', 'Failed to update sync settings');
+      logger.error('Error downloading all songs from OneDrive', error);
+      Alert.alert('Download Error', 'Failed to download songs from OneDrive');
+    } finally {
+      setIsDownloading(false);
     }
-  }, []);
-
-  // Handle toggle sync on app start
-  const handleToggleSyncOnAppStart = useCallback(async (value: boolean) => {
-    try {
-      setSyncSettings(prev => ({ ...prev, syncOnAppStart: value }));
-      const oneDriveProvider = storageManager.getProvider('onedrive') as OneDriveStorageProvider;
-      if (oneDriveProvider) {
-        await oneDriveProvider.updateSyncSettings({ syncOnAppStart: value });
-      }
-    } catch (error) {
-      logger.error('Error updating sync settings', error);
-      // Revert UI
-      setSyncSettings(prev => ({ ...prev, syncOnAppStart: !value }));
-      Alert.alert('Error', 'Failed to update sync settings');
-    }
-  }, []);
-
-  // Handle toggle sync on WiFi only
-  const handleToggleSyncOnWifiOnly = useCallback(async (value: boolean) => {
-    try {
-      setSyncSettings(prev => ({ ...prev, syncOnWifiOnly: value }));
-      const oneDriveProvider = storageManager.getProvider('onedrive') as OneDriveStorageProvider;
-      if (oneDriveProvider) {
-        await oneDriveProvider.updateSyncSettings({ syncOnWifiOnly: value });
-      }
-    } catch (error) {
-      logger.error('Error updating sync settings', error);
-      // Revert UI
-      setSyncSettings(prev => ({ ...prev, syncOnWifiOnly: !value }));
-      Alert.alert('Error', 'Failed to update sync settings');
-    }
-  }, []);
+  };
 
   // Get sync status message
   const getSyncStatusMessage = () => {
@@ -259,13 +227,13 @@ const StorageProvidersScreen = () => {
   const getSyncStatusIcon = () => {
     switch (syncStatus) {
       case SyncStatus.SYNCING:
-        return <ActivityIndicator size="small" color="#6200ee" />;
+        return <ActivityIndicator size="small" color={theme.primary} />;
       case SyncStatus.SUCCESS:
         return <Ionicons name="checkmark-circle" size={16} color="green" />;
       case SyncStatus.ERROR:
         return <Ionicons name="alert-circle" size={16} color="red" />;
       default:
-        return <Ionicons name="cloud-outline" size={16} color="#666" />;
+        return <Ionicons name="cloud-outline" size={16} color={theme.textSecondary} />;
     }
   };
 
@@ -276,18 +244,18 @@ const StorageProvidersScreen = () => {
     const isOneDrive = provider.getId() === 'onedrive';
     
     return (
-      <View key={provider.getId()} style={styles.providerItem}>
-        <View style={styles.providerIconContainer}>
+      <View key={provider.getId()} style={[styles.providerItem, { backgroundColor: theme.cardBackground, shadowColor: theme.text }]}>
+        <View style={[styles.providerIconContainer, { backgroundColor: theme.surface }]}>
           <Ionicons 
             name={isLocal ? 'phone-portrait-outline' : 'cloud-outline'} 
             size={24} 
-            color="#6200ee" 
+            color={theme.primary} 
           />
         </View>
         
         <View style={styles.providerInfo}>
-          <Text style={styles.providerName}>{provider.getName()}</Text>
-          <Text style={styles.providerDescription}>
+          <Text style={[styles.providerName, { color: theme.text }]}>{provider.getName()}</Text>
+          <Text style={[styles.providerDescription, { color: theme.textSecondary }]}>
             {isLocal 
               ? 'Access music stored on your device' 
               : 'Access music stored in your OneDrive'}
@@ -296,27 +264,36 @@ const StorageProvidersScreen = () => {
           {isOneDrive && oneDriveConnected && (
             <View style={styles.syncStatusContainer}>
               {getSyncStatusIcon()}
-              <Text style={styles.syncStatusText}>{getSyncStatusMessage()}</Text>
+              <Text style={[styles.syncStatusText, { color: theme.textSecondary }]}>{getSyncStatusMessage()}</Text>
             </View>
+          )}
+          
+          {isOneDrive && (
+            <Text style={[styles.providerNoteText, { color: theme.textSecondary }]}>
+              OneDrive will search for audio files in these folders:
+              {'\n'}• root/sonora
+              {'\n'}• root/music
+              {'\n'}• root/Music
+            </Text>
           )}
         </View>
         
         {isConnecting ? (
-          <ActivityIndicator size="small" color="#6200ee" />
+          <ActivityIndicator size="small" color={theme.primary} />
         ) : (
           <View style={styles.providerActions}>
             {isLocal ? (
               // Local provider actions
               <>
                 <TouchableOpacity 
-                  style={styles.actionButton}
+                  style={[styles.actionButton, { backgroundColor: theme.primary }]}
                   onPress={handleImportLocalFiles}
                 >
                   <Ionicons name="document-outline" size={16} color="#fff" style={styles.actionButtonIcon} />
                   <Text style={styles.actionButtonText}>Import Files</Text>
                 </TouchableOpacity>
                 <TouchableOpacity 
-                  style={[styles.actionButton, { marginTop: 8 }]}
+                  style={[styles.actionButton, { marginTop: 8, backgroundColor: theme.primary }]}
                   onPress={handleImportLocalFolder}
                 >
                   <Ionicons name="folder-outline" size={16} color="#fff" style={styles.actionButtonIcon} />
@@ -329,7 +306,7 @@ const StorageProvidersScreen = () => {
                 // Connected actions
                 <>
                   <TouchableOpacity 
-                    style={styles.actionButton}
+                    style={[styles.actionButton, { backgroundColor: theme.primary }]}
                     onPress={() => handleDisconnectProvider(provider.getId())}
                   >
                     <Ionicons name="log-out-outline" size={16} color="#fff" style={styles.actionButtonIcon} />
@@ -337,7 +314,7 @@ const StorageProvidersScreen = () => {
                   </TouchableOpacity>
                   
                   <TouchableOpacity 
-                    style={[styles.actionButton, { marginTop: 8 }]}
+                    style={[styles.actionButton, { marginTop: 8, backgroundColor: theme.primary }]}
                     onPress={handleSyncNow}
                     disabled={syncStatus === SyncStatus.SYNCING}
                   >
@@ -350,7 +327,7 @@ const StorageProvidersScreen = () => {
               ) : (
                 // Not connected action
                 <TouchableOpacity 
-                  style={styles.actionButton}
+                  style={[styles.actionButton, { backgroundColor: theme.primary }]}
                   onPress={() => handleConnectProvider(provider.getId())}
                 >
                   <Ionicons name="log-in-outline" size={16} color="#fff" style={styles.actionButtonIcon} />
@@ -360,7 +337,7 @@ const StorageProvidersScreen = () => {
             ) : (
               // Other provider types (if any)
               <TouchableOpacity 
-                style={styles.actionButton}
+                style={[styles.actionButton, { backgroundColor: theme.primary }]}
                 onPress={() => handleConnectProvider(provider.getId())}
               >
                 <Ionicons name="log-in-outline" size={16} color="#fff" style={styles.actionButtonIcon} />
@@ -373,70 +350,48 @@ const StorageProvidersScreen = () => {
     );
   };
 
-  // Render OneDrive sync settings
-  const renderOneDriveSyncSettings = () => {
-    const oneDriveProvider = providers.find(p => p.getId() === 'onedrive');
-    if (!oneDriveProvider || !oneDriveConnected) return null;
+  // Render Download All Card
+  const renderDownloadAllCard = () => {
+    // Only show if OneDrive is connected
+    if (!oneDriveConnected) return null;
     
     return (
-      <View style={styles.syncSettingsContainer}>
-        <Text style={styles.syncSettingsTitle}>OneDrive Sync Settings</Text>
-        
-        <View style={styles.syncSettingItem}>
-          <Text style={styles.syncSettingLabel}>Enable automatic sync</Text>
-          <Switch
-            value={syncEnabled}
-            onValueChange={handleToggleSyncEnabled}
-            trackColor={{ false: '#d8d8d8', true: '#b39ddb' }}
-            thumbColor={syncEnabled ? '#6200ee' : '#f4f3f4'}
-          />
-        </View>
-        
-        <Text style={styles.syncFolderInfo}>
-          OneDrive Sync will only search for audio files in these folders:
-          {'\n'}• root/sonora
-          {'\n'}• root/music
-          {'\n'}• root/Music
-          {'\n\n'}Note: Sync currently only logs found files without downloading them.
-        </Text>
-        
-        {syncEnabled && (
-          <>
-            <View style={styles.syncSettingItem}>
-              <Text style={styles.syncSettingLabel}>Sync on app start</Text>
-              <Switch
-                value={syncSettings.syncOnAppStart}
-                onValueChange={handleToggleSyncOnAppStart}
-                trackColor={{ false: '#d8d8d8', true: '#b39ddb' }}
-                thumbColor={syncSettings.syncOnAppStart ? '#6200ee' : '#f4f3f4'}
-              />
-            </View>
-            
-            <View style={styles.syncSettingItem}>
-              <Text style={styles.syncSettingLabel}>Sync only on WiFi</Text>
-              <Switch
-                value={syncSettings.syncOnWifiOnly}
-                onValueChange={handleToggleSyncOnWifiOnly}
-                trackColor={{ false: '#d8d8d8', true: '#b39ddb' }}
-                thumbColor={syncSettings.syncOnWifiOnly ? '#6200ee' : '#f4f3f4'}
-              />
-            </View>
-          </>
-        )}
-        
-        <View style={styles.syncStatusContainer}>
-          {getSyncStatusIcon()}
-          <Text style={styles.syncStatusText}>{getSyncStatusMessage()}</Text>
+      <View style={[styles.syncSettingsContainer, { backgroundColor: theme.cardBackground, shadowColor: theme.text }]}>
+        <View style={styles.downloadAllHeader}>
+          <View style={[styles.providerIconContainer, { backgroundColor: theme.surface }]}>
+            <Ionicons name="cloud-download-outline" size={24} color={theme.primary} />
+          </View>
+          
+          <View style={styles.providerInfo}>
+            <Text style={[styles.providerName, { color: theme.text }]}>Download All Songs</Text>
+            <Text style={[styles.providerDescription, { color: theme.textSecondary }]}>
+              Download all songs from connected storage providers to your device for offline listening.
+            </Text>
+          </View>
         </View>
         
         <TouchableOpacity 
-          style={[styles.syncNowButton, syncStatus === SyncStatus.SYNCING && styles.syncNowButtonDisabled]}
-          onPress={handleSyncNow}
-          disabled={syncStatus === SyncStatus.SYNCING}
+          style={[
+            styles.syncNowButton, 
+            { 
+              backgroundColor: isDownloading ? theme.border : theme.primary,
+              marginTop: 16
+            }
+          ]}
+          onPress={handleDownloadAllSongs}
+          disabled={isDownloading}
         >
-          <Text style={styles.syncNowButtonText}>
-            {syncStatus === SyncStatus.SYNCING ? 'Syncing...' : 'Sync Now'}
-          </Text>
+          {isDownloading ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <ActivityIndicator size="small" color="#fff" style={{ marginRight: 8 }} />
+              <Text style={styles.syncNowButtonText}>Downloading...</Text>
+            </View>
+          ) : (
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Ionicons name="download-outline" size={16} color="#fff" style={{ marginRight: 8 }} />
+              <Text style={styles.syncNowButtonText}>Download All Songs</Text>
+            </View>
+          )}
         </TouchableOpacity>
       </View>
     );
@@ -444,21 +399,25 @@ const StorageProvidersScreen = () => {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#6200ee" />
-        <Text style={styles.loadingText}>Loading storage providers...</Text>
+      <View style={[styles.loadingContainer, { backgroundColor: theme.background }]}>
+        <ActivityIndicator size="large" color={theme.primary} />
+        <Text style={[styles.loadingText, { color: theme.textSecondary }]}>Loading storage providers...</Text>
       </View>
     );
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
       <View style={[
         styles.headerContainer, 
-        { paddingTop: 20 + insets.top }
+        { 
+          paddingTop: 0,
+          paddingBottom: 10,
+          backgroundColor: theme.cardBackground, 
+          borderBottomColor: theme.border 
+        }
       ]}>
-        <Text style={styles.headerTitle}>Storage Providers</Text>
-        <Text style={styles.headerDescription}>
+        <Text style={[styles.headerDescription, { color: theme.textSecondary }]}>
           Connect to different storage providers to access your music
         </Text>
       </View>
@@ -467,11 +426,11 @@ const StorageProvidersScreen = () => {
         {providers.map(renderProviderItem)}
       </View>
       
-      {renderOneDriveSyncSettings()}
+      {renderDownloadAllCard()}
       
-      <View style={styles.infoContainer}>
-        <Text style={styles.infoTitle}>About Storage Providers</Text>
-        <Text style={styles.infoText}>
+      <View style={[styles.infoContainer, { backgroundColor: theme.cardBackground, shadowColor: theme.text }]}>
+        <Text style={[styles.infoTitle, { color: theme.text }]}>About Storage Providers</Text>
+        <Text style={[styles.infoText, { color: theme.textSecondary }]}>
           Sonora can play music from multiple sources. Connect to OneDrive to access your cloud music, or import music from your device's local storage.
         </Text>
       </View>
@@ -500,11 +459,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
-  },
-  headerTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#333',
   },
   headerDescription: {
     fontSize: 16,
@@ -550,6 +504,11 @@ const styles = StyleSheet.create({
     color: '#666',
     marginTop: 4,
   },
+  providerNoteText: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 8,
+  },
   syncStatusContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -592,29 +551,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 2,
   },
-  syncSettingsTitle: {
-    fontSize: 18,
-    fontWeight: '500',
-    color: '#333',
-    marginBottom: 16,
-  },
-  syncSettingItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  syncSettingLabel: {
-    fontSize: 16,
-    color: '#333',
-  },
-  syncFolderInfo: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 16,
-  },
   infoContainer: {
     padding: 20,
     marginTop: 16,
@@ -647,13 +583,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  syncNowButtonDisabled: {
-    backgroundColor: '#d8d8d8',
-  },
   syncNowButtonText: {
     color: '#fff',
     fontSize: 14,
     fontWeight: '500',
+  },
+  downloadAllHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
 });
 
