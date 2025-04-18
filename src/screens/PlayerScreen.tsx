@@ -66,6 +66,12 @@ const PlayerScreen = () => {
     );
   }
   
+  // Extract clean title (without artist prefix)
+  let cleanTitle = currentTrack.title;
+  if (cleanTitle.includes('-') && currentTrack.artist && cleanTitle.startsWith(currentTrack.artist)) {
+    cleanTitle = cleanTitle.substring(currentTrack.artist.length).replace(/^\s*-\s*/, '').trim();
+  }
+  
   return (
     <SafeAreaView style={styles.container}>
       {/* Album art */}
@@ -86,7 +92,7 @@ const PlayerScreen = () => {
       {/* Track info */}
       <View style={styles.infoContainer}>
         <Text style={styles.title} numberOfLines={2}>
-          {currentTrack.title}
+          {cleanTitle}
         </Text>
         <Text style={styles.artist} numberOfLines={1}>
           {currentTrack.artist || 'Unknown artist'}

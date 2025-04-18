@@ -8,6 +8,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import { Audio } from 'expo-av';
 import { Platform } from 'react-native';
 import uuid from 'react-native-uuid';
+import MusicInfo from 'expo-music-info-2';
 
 import { BaseStorageProvider } from './StorageProvider';
 import { Track } from '../../types';
@@ -180,14 +181,42 @@ export class LocalStorageProvider extends BaseStorageProvider {
         // Copy file to document directory to ensure it's readable
         const cachePath = await this.copyFileToDocumentDirectory(file.uri, file.name);
         
-        // Create a track object
+        // Extract metadata from the audio file
+        let metadata = null;
+        try {
+          metadata = await MusicInfo.getMusicInfoAsync(cachePath, {
+            title: true,
+            artist: true,
+            album: true,
+            genre: true,
+            picture: true
+          });
+          logger.debug(`Extracted metadata for ${file.name}:`, metadata);
+        } catch (error) {
+          logger.warn(`Failed to extract metadata from ${file.name}`, error);
+        }
+        
+        // Try to extract artist from filename if not in metadata
+        let artistFromFilename;
+        const filenameWithoutExt = this.getFileNameWithoutExtension(file.name);
+        if (filenameWithoutExt.includes('-')) {
+          const parts = filenameWithoutExt.split('-');
+          if (parts.length >= 2) {
+            artistFromFilename = parts[0].trim();
+          }
+        }
+        
+        // Create a track object with metadata
         const track: Track = {
           id: uuid.v4().toString(),
-          title: this.getFileNameWithoutExtension(file.name),
+          title: metadata?.title || this.getFileNameWithoutExtension(file.name),
+          artist: metadata?.artist || artistFromFilename || 'Unknown artist',
+          album: metadata?.album || undefined,
           uri: cachePath,
           source: 'local',
           path: cachePath,
-          duration: await this.getAudioDuration(cachePath)
+          duration: await this.getAudioDuration(cachePath),
+          artwork: metadata?.picture?.pictureData || undefined
         };
         
         // Add to tracks map
@@ -239,14 +268,42 @@ export class LocalStorageProvider extends BaseStorageProvider {
         // Copy file to document directory to ensure it's readable
         const cachePath = await this.copyFileToDocumentDirectory(file.uri, file.name);
         
-        // Create a track object
+        // Extract metadata from the audio file
+        let metadata = null;
+        try {
+          metadata = await MusicInfo.getMusicInfoAsync(cachePath, {
+            title: true,
+            artist: true,
+            album: true,
+            genre: true,
+            picture: true
+          });
+          logger.debug(`Extracted metadata for ${file.name}:`, metadata);
+        } catch (error) {
+          logger.warn(`Failed to extract metadata from ${file.name}`, error);
+        }
+        
+        // Try to extract artist from filename if not in metadata
+        let artistFromFilename;
+        const filenameWithoutExt = this.getFileNameWithoutExtension(file.name);
+        if (filenameWithoutExt.includes('-')) {
+          const parts = filenameWithoutExt.split('-');
+          if (parts.length >= 2) {
+            artistFromFilename = parts[0].trim();
+          }
+        }
+        
+        // Create a track object with metadata
         const track: Track = {
           id: uuid.v4().toString(),
-          title: this.getFileNameWithoutExtension(file.name),
+          title: metadata?.title || this.getFileNameWithoutExtension(file.name),
+          artist: metadata?.artist || artistFromFilename || 'Unknown artist',
+          album: metadata?.album || undefined,
           uri: cachePath,
           source: 'local',
           path: cachePath,
-          duration: await this.getAudioDuration(cachePath)
+          duration: await this.getAudioDuration(cachePath),
+          artwork: metadata?.picture?.pictureData || undefined
         };
         
         // Add to tracks map

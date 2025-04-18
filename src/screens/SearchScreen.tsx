@@ -12,7 +12,8 @@ import {
   FlatList, 
   TouchableOpacity, 
   ActivityIndicator,
-  Keyboard 
+  Keyboard,
+  Image 
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -20,6 +21,19 @@ import { useStore } from '../store';
 import { Track } from '../types';
 import { logger } from '../utils/logger';
 import { useTheme } from '../theme/ThemeContext';
+
+/**
+ * Format duration in milliseconds to mm:ss format
+ */
+const formatDuration = (durationMs?: number): string => {
+  if (!durationMs) return '';
+  
+  const totalSeconds = Math.floor(durationMs / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+};
 
 const SearchScreen = () => {
   const { tracks, playTrack } = useStore();
@@ -72,29 +86,46 @@ const SearchScreen = () => {
   };
 
   // Render track item
-  const renderTrackItem = ({ item }: { item: Track }) => (
-    <TouchableOpacity 
-      style={[styles.trackItem, { borderBottomColor: theme.border }]} 
-      onPress={() => handleTrackPress(item)}
-    >
-      <View style={[styles.trackIconContainer, { backgroundColor: theme.surface }]}>
-        <Ionicons name="musical-note" size={24} color={theme.primary} />
-      </View>
-      <View style={styles.trackInfo}>
-        <Text style={[styles.trackTitle, { color: theme.text }]} numberOfLines={1}>{item.title}</Text>
-        <Text style={[styles.trackArtist, { color: theme.textSecondary }]} numberOfLines={1}>
-          {item.artist || 'Unknown artist'}
-          {item.album ? ` • ${item.album}` : ''}
-        </Text>
-        <Text style={[styles.trackSource, { color: theme.textSecondary }]}>
-          {item.source === 'local' ? 'Local' : 'OneDrive'}
-        </Text>
-      </View>
-      <TouchableOpacity style={styles.trackAction}>
-        <Ionicons name="play" size={20} color={theme.primary} />
+  const renderTrackItem = ({ item }: { item: Track }) => {
+    // Extract clean title (without artist prefix)
+    let cleanTitle = item.title;
+    if (cleanTitle.includes('-') && item.artist && cleanTitle.startsWith(item.artist)) {
+      cleanTitle = cleanTitle.substring(item.artist.length).replace(/^\s*-\s*/, '').trim();
+    }
+    
+    return (
+      <TouchableOpacity 
+        style={[styles.trackItem, { borderBottomColor: theme.border }]} 
+        onPress={() => handleTrackPress(item)}
+      >
+        <View style={[styles.trackIconContainer, { backgroundColor: theme.surface }]}>
+          {item.artwork ? (
+            <Image
+              source={{ uri: item.artwork }}
+              style={styles.artwork}
+              resizeMode="cover"
+            />
+          ) : (
+            <Ionicons name="musical-note" size={24} color={theme.primary} />
+          )}
+        </View>
+        <View style={styles.trackInfo}>
+          <Text style={[styles.trackTitle, { color: theme.text }]} numberOfLines={1}>{cleanTitle}</Text>
+          <Text style={[styles.trackArtist, { color: theme.textSecondary }]} numberOfLines={1}>
+            {item.artist || 'Unknown artist'}
+            {item.album ? ` • ${item.album}` : ''}
+          </Text>
+          <Text style={[styles.trackSource, { color: theme.textSecondary }]}>
+            {item.source === 'local' ? 'Local' : 'OneDrive'}
+            {item.duration ? ` • ${formatDuration(item.duration)}` : ''}
+          </Text>
+        </View>
+        <TouchableOpacity style={styles.trackAction}>
+          <Ionicons name="play" size={20} color={theme.primary} />
+        </TouchableOpacity>
       </TouchableOpacity>
-    </TouchableOpacity>
-  );
+    );
+  };
 
   // Render empty state
   const renderEmptyState = () => {
@@ -238,6 +269,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 8,
     textAlign: 'center',
+  },
+  artwork: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 20,
   },
 });
 

@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,6 +15,8 @@ import { useStore } from '../store';
 import { Track, Playlist } from '../types';
 import { logger } from '../utils/logger';
 import { useTheme } from '../theme/ThemeContext';
+import { formatTime as formatDuration } from '../utils/formatters';
+import { extractCleanTitle } from '../utils/formatters';
 
 const LibraryScreen = () => {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
@@ -59,23 +61,43 @@ const LibraryScreen = () => {
   };
 
   // Render track item
-  const renderTrackItem = ({ item }: { item: Track }) => (
-    <TouchableOpacity 
-      style={[styles.trackItem, { backgroundColor: theme.cardBackground, borderBottomColor: theme.border }]} 
-      onPress={() => handleTrackPress(item)}
-    >
-      <View style={[styles.trackIconContainer, { backgroundColor: theme.surface }]}>
-        <Ionicons name="musical-note" size={24} color={theme.primary} />
-      </View>
-      <View style={styles.trackInfo}>
-        <Text style={[styles.trackTitle, { color: theme.text }]} numberOfLines={1}>{item.title}</Text>
-        <Text style={[styles.trackArtist, { color: theme.textSecondary }]} numberOfLines={1}>{item.artist || 'Unknown artist'}</Text>
-      </View>
-      <TouchableOpacity style={styles.trackAction}>
-        <Ionicons name="ellipsis-vertical" size={20} color={theme.textSecondary} />
+  const renderTrackItem = ({ item }: { item: Track }) => {
+    // Extract clean title (without artist prefix)
+    const cleanTitle = extractCleanTitle(item.title, item.artist);
+    
+    return (
+      <TouchableOpacity 
+        style={[styles.trackItem, { backgroundColor: theme.cardBackground, borderBottomColor: theme.border }]} 
+        onPress={() => handleTrackPress(item)}
+      >
+        <View style={[styles.trackIconContainer, { backgroundColor: theme.surface }]}>
+          {item.artwork ? (
+            <Image
+              source={{ uri: item.artwork }}
+              style={styles.artwork}
+              resizeMode="cover"
+            />
+          ) : (
+            <Ionicons name="musical-note" size={24} color={theme.primary} />
+          )}
+        </View>
+        <View style={styles.trackInfo}>
+          <Text style={[styles.trackTitle, { color: theme.text }]} numberOfLines={1}>{cleanTitle}</Text>
+          <Text style={[styles.trackArtist, { color: theme.textSecondary }]} numberOfLines={1}>
+            {item.artist || 'Unknown artist'}
+            {item.album ? ` • ${item.album}` : ''}
+          </Text>
+          <Text style={[styles.trackSource, { color: theme.textSecondary }]} numberOfLines={1}>
+            {item.source === 'local' ? 'Local' : 'OneDrive'}
+            {item.duration ? ` • ${formatDuration(item.duration)}` : ''}
+          </Text>
+        </View>
+        <TouchableOpacity style={styles.trackAction}>
+          <Ionicons name="ellipsis-vertical" size={20} color={theme.textSecondary} />
+        </TouchableOpacity>
       </TouchableOpacity>
-    </TouchableOpacity>
-  );
+    );
+  };
 
   // Render playlist item
   const renderPlaylistItem = ({ item }: { item: Playlist }) => (
@@ -282,8 +304,16 @@ const styles = StyleSheet.create({
   trackArtist: {
     fontSize: 14,
   },
+  trackSource: {
+    fontSize: 12,
+  },
   trackAction: {
     padding: 8,
+  },
+  artwork: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 20,
   },
   playlistItem: {
     flexDirection: 'row',

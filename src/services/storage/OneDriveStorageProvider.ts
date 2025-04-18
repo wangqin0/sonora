@@ -12,6 +12,7 @@ import * as Linking from 'expo-linking';
 import * as FileSystem from 'expo-file-system';
 import { Platform } from 'react-native';
 import * as NetInfo from '@react-native-community/netinfo';
+import MusicInfo from 'expo-music-info-2';
 import { 
   ONEDRIVE_CLIENT_ID, 
   ONEDRIVE_REDIRECT_URI, 
@@ -21,6 +22,7 @@ import {
   SyncStatus 
 } from '../../config/onedrive';
 import { logOAuthDetails } from '../../utils/debugHelper';
+import { extractCleanTitle, formatTime as formatDuration } from '../../utils/formatters';
 
 // Constants
 const ONEDRIVE_TRACKS_STORAGE_KEY = '@sonora/onedrive_tracks';
@@ -319,6 +321,12 @@ export class OneDriveStorageProvider extends BaseStorageProvider {
       
       if (docInfo.exists) {
         logger.debug(`Using cached file for ${track.title} from document directory`);
+        
+        // If track has no metadata yet, try to extract it
+        if (!track.artist && !track.album) {
+          await this.extractAndUpdateMetadata(track, docPath);
+        }
+        
         return docPath;
       }
       
@@ -339,6 +347,9 @@ export class OneDriveStorageProvider extends BaseStorageProvider {
           to: docPath
         });
         
+        // Extract metadata and update track
+        await this.extractAndUpdateMetadata(track, docPath);
+        
         return docPath;
       }
       
@@ -356,6 +367,9 @@ export class OneDriveStorageProvider extends BaseStorageProvider {
       const downloadResult = await FileSystem.downloadAsync(downloadUrl, docPath);
       logger.debug(`File downloaded to: ${downloadResult.uri}`);
       
+      // Extract metadata and update track
+      await this.extractAndUpdateMetadata(track, downloadResult.uri);
+      
       return downloadResult.uri;
     } catch (error) {
       logger.error(`Error getting audio file URI for ${track.title}`, error);
@@ -368,6 +382,80 @@ export class OneDriveStorageProvider extends BaseStorageProvider {
       } catch (fallbackError) {
         logger.error(`Fallback also failed for ${track.title}`, fallbackError);
         throw error; // Throw the original error
+      }
+    }
+  }
+  
+  /**
+   * Extract metadata from an audio file and update the track object
+   */
+  private async extractAndUpdateMetadata(track: Track, filePath: string): Promise<void> {
+    try {
+      // Only extract metadata if track is missing information
+      if (!track.artist || !track.album || !track.artwork) {
+        const metadata = await MusicInfo.getMusicInfoAsync(filePath, {
+          title: true,
+          artist: true,
+          album: true,
+          genre: true,
+          picture: true
+        });
+        
+        // Try to extract artist from filename if metadata doesn't provide it
+        let artistFromFilename;
+        if (track.title.includes('-')) {
+          const parts = track.title.split('-');
+          if (parts.length >= 2) {
+            artistFromFilename = parts[0].trim();
+          }
+        }
+        
+        if (metadata) {
+          // Update track with extracted metadata
+          if (metadata.title && track.title === this.getFileNameWithoutExtension(track.title)) {
+            track.title = metadata.title;
+          }
+          
+          if (!track.artist) {
+            track.artist = metadata.artist || artistFromFilename || 'Unknown artist';
+          }
+          
+          if (!track.album && metadata.album) {
+            track.album = metadata.album;
+          }
+          
+          if (!track.artwork && metadata.picture?.pictureData) {
+            track.artwork = metadata.picture.pictureData;
+          }
+          
+          // Save the updated tracks to persistent storage
+          const tracksArray = Array.from(this.tracks.values());
+          await AsyncStorage.setItem(ONEDRIVE_TRACKS_STORAGE_KEY, JSON.stringify(tracksArray));
+          
+          logger.debug(`Updated metadata for track: ${extractCleanTitle(track.title, track.artist)}`);
+        } else if (!track.artist) {
+          // If no metadata but we have an artist from filename, use it
+          track.artist = artistFromFilename || 'Unknown artist';
+          
+          // Save the updated tracks to persistent storage
+          const tracksArray = Array.from(this.tracks.values());
+          await AsyncStorage.setItem(ONEDRIVE_TRACKS_STORAGE_KEY, JSON.stringify(tracksArray));
+        }
+      }
+    } catch (error) {
+      logger.warn(`Failed to extract metadata for ${extractCleanTitle(track.title, track.artist)}`, error);
+      // Don't throw an error, just continue with the existing track data
+      
+      // Try to extract artist from filename if we failed to get metadata
+      if (!track.artist && track.title.includes('-')) {
+        const parts = track.title.split('-');
+        if (parts.length >= 2) {
+          track.artist = parts[0].trim();
+          
+          // Save the updated tracks to persistent storage
+          const tracksArray = Array.from(this.tracks.values());
+          await AsyncStorage.setItem(ONEDRIVE_TRACKS_STORAGE_KEY, JSON.stringify(tracksArray));
+        }
       }
     }
   }
@@ -855,8 +943,17 @@ export class OneDriveStorageProvider extends BaseStorageProvider {
           // Check if it's an audio file
           const fileExtension = this.getFileExtension(item.name).toLowerCase();
           if (SUPPORTED_AUDIO_EXTENSIONS.includes(`.${fileExtension}`)) {
-            // Just log the file instead of adding it to tracks
-            logger.info(`Found audio file: ${item.name} (${item.id})`);
+            // Extract filename without extension to use as title if needed
+            const fileName = this.getFileNameWithoutExtension(item.name);
+            
+            // Try to extract artist from filename
+            let artist = undefined;
+            if (fileName.includes('-')) {
+              const parts = fileName.split('-');
+              if (parts.length >= 2) {
+                artist = parts[0].trim();
+              }
+            }
             
             // Generate a simpler ID instead of using UUID
             const simpleId = `onedrive-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
@@ -864,12 +961,18 @@ export class OneDriveStorageProvider extends BaseStorageProvider {
             // Create a track object
             const track: Track = {
               id: simpleId,
-              title: this.getFileNameWithoutExtension(item.name),
+              title: fileName,
               uri: item['@microsoft.graph.downloadUrl'] || '',
               source: 'onedrive',
               path: item.id,
-              duration: undefined // We'll get this when playing
+              duration: undefined, // We'll get this when playing
+              artist: artist, // Extract from filename if possible
+              album: undefined, // Will be extracted when file is downloaded
+              artwork: undefined // Will be extracted when file is downloaded
             };
+            
+            // Log the file with clean title
+            logger.info(`Found audio file: ${extractCleanTitle(track.title, track.artist)} (${item.id})`);
             
             // Add to tracks map
             this.tracks.set(track.id, track);
@@ -892,12 +995,12 @@ export class OneDriveStorageProvider extends BaseStorageProvider {
       const data = await response.json();
       
       if (!data['@microsoft.graph.downloadUrl']) {
-        throw new Error(`No download URL available for ${track.title}`);
+        throw new Error(`No download URL available for ${extractCleanTitle(track.title, track.artist)}`);
       }
       
       return data['@microsoft.graph.downloadUrl'];
     } catch (error) {
-      logger.error(`Error getting download URL for ${track.title}`, error);
+      logger.error(`Error getting download URL for ${extractCleanTitle(track.title, track.artist)}`, error);
       throw error;
     }
   }

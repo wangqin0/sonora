@@ -10,7 +10,8 @@ import {
   StyleSheet, 
   FlatList, 
   TouchableOpacity, 
-  ActivityIndicator 
+  ActivityIndicator,
+  Image
 } from 'react-native';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,6 +22,19 @@ import { logger } from '../utils/logger';
 import { RootStackParamList } from '../navigation/AppNavigator';
 
 type PlaylistDetailRouteProp = RouteProp<RootStackParamList, 'PlaylistDetail'>;
+
+/**
+ * Format duration in milliseconds to mm:ss format
+ */
+const formatDuration = (durationMs?: number): string => {
+  if (!durationMs) return '';
+  
+  const totalSeconds = Math.floor(durationMs / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+};
 
 const PlaylistDetailScreen = () => {
   const route = useRoute<PlaylistDetailRouteProp>();
@@ -76,24 +90,44 @@ const PlaylistDetailScreen = () => {
   };
 
   // Render track item
-  const renderTrackItem = ({ item, index }: { item: Track; index: number }) => (
-    <TouchableOpacity 
-      style={styles.trackItem} 
-      onPress={() => handleTrackPress(item, index)}
-    >
-      <Text style={styles.trackNumber}>{index + 1}</Text>
-      <View style={styles.trackInfo}>
-        <Text style={styles.trackTitle} numberOfLines={1}>{item.title}</Text>
-        <Text style={styles.trackArtist} numberOfLines={1}>
-          {item.artist || 'Unknown artist'}
-          {item.album ? ` • ${item.album}` : ''}
-        </Text>
-      </View>
-      <TouchableOpacity style={styles.trackAction}>
-        <Ionicons name="ellipsis-vertical" size={20} color="#666" />
+  const renderTrackItem = ({ item, index }: { item: Track; index: number }) => {
+    // Extract clean title (without artist prefix)
+    let cleanTitle = item.title;
+    if (cleanTitle.includes('-') && item.artist && cleanTitle.startsWith(item.artist)) {
+      cleanTitle = cleanTitle.substring(item.artist.length).replace(/^\s*-\s*/, '').trim();
+    }
+    
+    return (
+      <TouchableOpacity 
+        style={styles.trackItem} 
+        onPress={() => handleTrackPress(item, index)}
+      >
+        <Text style={styles.trackNumber}>{index + 1}</Text>
+        {item.artwork ? (
+          <Image
+            source={{ uri: item.artwork }}
+            style={styles.trackArtwork}
+            resizeMode="cover"
+          />
+        ) : (
+          <View style={styles.trackArtworkPlaceholder}>
+            <Ionicons name="musical-note" size={20} color="#888" />
+          </View>
+        )}
+        <View style={styles.trackInfo}>
+          <Text style={styles.trackTitle} numberOfLines={1}>{cleanTitle}</Text>
+          <Text style={styles.trackArtist} numberOfLines={1}>
+            {item.artist || 'Unknown artist'}
+            {item.album ? ` • ${item.album}` : ''}
+            {item.duration ? ` • ${formatDuration(item.duration)}` : ''}
+          </Text>
+        </View>
+        <TouchableOpacity style={styles.trackAction}>
+          <Ionicons name="ellipsis-vertical" size={20} color="#666" />
+        </TouchableOpacity>
       </TouchableOpacity>
-    </TouchableOpacity>
-  );
+    );
+  };
 
   // Render loading state
   if (isLoading) {
@@ -266,6 +300,21 @@ const styles = StyleSheet.create({
     color: '#666',
     marginTop: 16,
     textAlign: 'center',
+  },
+  trackArtwork: {
+    width: 40,
+    height: 40,
+    borderRadius: 4,
+    marginRight: 12,
+  },
+  trackArtworkPlaceholder: {
+    width: 40,
+    height: 40,
+    borderRadius: 4,
+    backgroundColor: '#f0f0f0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
   },
 });
 

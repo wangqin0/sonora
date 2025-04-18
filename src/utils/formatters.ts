@@ -39,6 +39,23 @@ export const formatFileSize = (bytes: number | undefined): string => {
 };
 
 /**
+ * Extract clean title by removing artist prefix if present
+ * @param title Original track title
+ * @param artist Artist name
+ * @returns Clean title without artist prefix
+ */
+export const extractCleanTitle = (title: string, artist?: string): string => {
+  if (!title) return '';
+  
+  let cleanTitle = title;
+  if (cleanTitle.includes('-') && artist && cleanTitle.startsWith(artist)) {
+    cleanTitle = cleanTitle.substring(artist.length).replace(/^\s*-\s*/, '').trim();
+  }
+  
+  return cleanTitle;
+};
+
+/**
  * Format date to a human-readable string
  * @param date Date object or string
  * @returns Formatted date string
