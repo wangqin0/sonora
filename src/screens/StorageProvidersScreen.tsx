@@ -408,20 +408,6 @@ const StorageProvidersScreen = () => {
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
-      <View style={[
-        styles.headerContainer, 
-        { 
-          paddingTop: 0,
-          paddingBottom: 10,
-          backgroundColor: theme.cardBackground, 
-          borderBottomColor: theme.border 
-        }
-      ]}>
-        <Text style={[styles.headerDescription, { color: theme.textSecondary }]}>
-          Connect to different storage providers to access your music
-        </Text>
-      </View>
-      
       <View style={styles.providersContainer}>
         {providers.map(renderProviderItem)}
       </View>
@@ -453,17 +439,6 @@ const styles = StyleSheet.create({
     marginTop: 12,
     fontSize: 16,
     color: '#666',
-  },
-  headerContainer: {
-    padding: 20,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  headerDescription: {
-    fontSize: 16,
-    color: '#666',
-    marginTop: 8,
   },
   providersContainer: {
     marginTop: 16,
