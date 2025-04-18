@@ -39,19 +39,6 @@ const SettingsScreen = () => {
     }
   };
 
-  // Handle audio quality change
-  const handleAudioQualityChange = async (audioQuality: 'auto' | 'high' | 'medium' | 'low') => {
-    try {
-      setIsLoading(true);
-      await updateSettings({ audioQuality });
-    } catch (error) {
-      logger.error('Error updating audio quality setting', error);
-      Alert.alert('Error', 'Failed to update audio quality setting');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   // Handle download strategy change
   const handleDownloadStrategyChange = async (downloadStrategy: 'wifi-only' | 'always' | 'never') => {
     try {
@@ -60,19 +47,6 @@ const SettingsScreen = () => {
     } catch (error) {
       logger.error('Error updating download strategy setting', error);
       Alert.alert('Error', 'Failed to update download strategy setting');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Handle log level change
-  const handleLogLevelChange = async (logLevel: LogLevel) => {
-    try {
-      setIsLoading(true);
-      await updateSettings({ logLevel });
-    } catch (error) {
-      logger.error('Error updating log level setting', error);
-      Alert.alert('Error', 'Failed to update log level setting');
     } finally {
       setIsLoading(false);
     }
@@ -163,15 +137,6 @@ const SettingsScreen = () => {
       {renderSectionHeader('Appearance')}
       {renderThemeToggleSetting()}
 
-      {/* Playback */}
-      {renderSectionHeader('Playback')}
-      {renderSettingItem(
-        'Audio Quality',
-        settings.audioQuality,
-        ['auto', 'high', 'medium', 'low'],
-        handleAudioQualityChange
-      )}
-
       {/* Storage */}
       {renderSectionHeader('Storage')}
       {renderSettingItem(
@@ -179,15 +144,6 @@ const SettingsScreen = () => {
         settings.downloadStrategy,
         ['wifi-only', 'always', 'never'],
         handleDownloadStrategyChange
-      )}
-
-      {/* Advanced */}
-      {renderSectionHeader('Advanced')}
-      {renderSettingItem(
-        'Log Level',
-        settings.logLevel,
-        [LogLevel.DEBUG, LogLevel.INFO, LogLevel.WARN, LogLevel.ERROR],
-        handleLogLevelChange
       )}
 
       {/* About */}
