@@ -14,6 +14,7 @@ import {
   Alert 
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useStore } from '../store';
 import { AppSettings, LogLevel } from '../types';
@@ -25,6 +26,7 @@ const SettingsScreen = () => {
   const { settings, updateSettings } = useStore();
   const [isLoading, setIsLoading] = useState(false);
   const { theme, isDarkMode } = useTheme();
+  const insets = useSafeAreaInsets();
 
   // Handle theme change
   const handleThemeChange = async (theme: 'light' | 'dark' | 'system') => {
@@ -132,7 +134,15 @@ const SettingsScreen = () => {
   );
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
+    <ScrollView 
+      style={[
+        styles.container, 
+        { 
+          backgroundColor: theme.background,
+          paddingTop: insets.top > 0 ? insets.top : 0
+        }
+      ]}
+    >
       {/* Appearance */}
       {renderSectionHeader('Appearance')}
       {renderThemeToggleSetting()}

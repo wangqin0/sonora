@@ -16,6 +16,7 @@ import {
   Image 
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useStore } from '../store';
 import { Track } from '../types';
@@ -41,6 +42,7 @@ const SearchScreen = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Track[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const insets = useSafeAreaInsets();
 
   // Perform search when query changes
   useEffect(() => {
@@ -160,7 +162,13 @@ const SearchScreen = () => {
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       {/* Search input */}
-      <View style={[styles.searchContainer, { backgroundColor: theme.surface }]}>
+      <View style={[
+        styles.searchContainer, 
+        { 
+          backgroundColor: theme.surface,
+          marginTop: 16 + (insets.top > 0 ? insets.top : 0),
+        }
+      ]}>
         <Ionicons name="search" size={20} color={theme.textSecondary} style={styles.searchIcon} />
         <TextInput
           style={[styles.searchInput, { color: theme.text }]}
@@ -200,7 +208,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderRadius: 8,
-    margin: 16,
+    marginHorizontal: 16,
+    marginBottom: 16,
     paddingHorizontal: 12,
     height: 48,
   },

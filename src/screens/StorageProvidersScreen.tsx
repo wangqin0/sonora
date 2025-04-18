@@ -6,6 +6,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, ScrollView, Switch } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useStore } from '../store';
 import { storageManager } from '../services/storage/StorageManager';
@@ -28,6 +29,9 @@ const StorageProvidersScreen = () => {
   });
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
   const [oneDriveConnected, setOneDriveConnected] = useState(false);
+
+  // Add insets hook
+  const insets = useSafeAreaInsets();
 
   // Load providers on component mount
   useEffect(() => {
@@ -449,7 +453,10 @@ const StorageProvidersScreen = () => {
 
   return (
     <ScrollView style={styles.container}>
-      <View style={styles.headerContainer}>
+      <View style={[
+        styles.headerContainer, 
+        { paddingTop: 20 + insets.top }
+      ]}>
         <Text style={styles.headerTitle}>Storage Providers</Text>
         <Text style={styles.headerDescription}>
           Connect to different storage providers to access your music

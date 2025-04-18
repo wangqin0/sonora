@@ -8,6 +8,7 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, 
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { RootStackParamList } from '../navigation/AppNavigator';
 
@@ -24,6 +25,7 @@ const LibraryScreen = () => {
   const { theme } = useTheme();
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<'tracks' | 'playlists'>('tracks');
+  const insets = useSafeAreaInsets();
 
   // Load library on component mount
   useEffect(() => {
@@ -167,7 +169,14 @@ const LibraryScreen = () => {
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       {/* Tab selector */}
-      <View style={[styles.tabContainer, { backgroundColor: theme.cardBackground, shadowColor: theme.text }]}>
+      <View style={[
+        styles.tabContainer, 
+        { 
+          backgroundColor: theme.cardBackground, 
+          shadowColor: theme.text,
+          paddingTop: insets.top > 0 ? insets.top : 0 
+        }
+      ]}>
         <TouchableOpacity 
           style={[styles.tab, activeTab === 'tracks' && [styles.activeTab, { borderBottomColor: theme.primary }]]}
           onPress={() => setActiveTab('tracks')}
