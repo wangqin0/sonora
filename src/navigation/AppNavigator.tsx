@@ -75,7 +75,7 @@ const MainTabNavigator = () => {
           borderBottomWidth: 1,
         },
         headerTintColor: theme.text,
-        headerShown: true,
+        headerShown: false,
       })}
     >
       <Tab.Screen 
