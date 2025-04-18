@@ -10,16 +10,29 @@ import { Ionicons } from '@expo/vector-icons';
 import Slider from '@react-native-community/slider';
 
 import { useStore } from '../../store';
+import { usePlayerStore } from '../../store/playerStore';
 import { formatTime } from '../../utils/formatters';
+import { logger } from '../../utils/logger';
+import { useTheme } from '../../theme/ThemeContext';
 
 const NowPlayingBar = () => {
-  const navigation = useNavigation();
-  const { playerState, togglePlayPause, nextTrack, seekTo } = useStore();
+  const navigation = useNavigation<any>();
+  // Get player controls from the main store
+  const { togglePlayPause, nextTrack, seekTo } = useStore();
+  // Get player state directly from the player store
+  const playerState = usePlayerStore(state => state.playerState);
+  const { theme } = useTheme();
+  
   const [sliderValue, setSliderValue] = useState(0);
   const [isSeeking, setIsSeeking] = useState(false);
   const [progressWidth] = useState(new Animated.Value(0));
   
   const { currentTrack, isPlaying, currentPosition, duration } = playerState;
+  
+  // Log current track when component mounts or updates
+  useEffect(() => {
+    logger.debug(`NowPlayingBar - currentTrack: ${currentTrack ? currentTrack.title : 'null'}, isPlaying: ${isPlaying}`);
+  }, [currentTrack, isPlaying]);
   
   // Update slider position based on current playback position
   useEffect(() => {
@@ -41,9 +54,9 @@ const NowPlayingBar = () => {
     return null;
   }
   
-  // Handle press on the player to open full player
+  // Handle press on the player to open Playing tab
   const handlePress = () => {
-    navigation.navigate('Player' as never);
+    navigation.navigate('MainTabs', { screen: 'Playing' });
   };
   
   // Handle play/pause button press
@@ -76,15 +89,30 @@ const NowPlayingBar = () => {
   };
   
   return (
-    <TouchableOpacity style={styles.container} onPress={handlePress} activeOpacity={0.9}>
+    <TouchableOpacity 
+      style={[
+        styles.container, 
+        { 
+          backgroundColor: theme.cardBackground,
+          borderTopColor: theme.border,
+          borderBottomColor: theme.border,
+          borderBottomWidth: 1
+        }
+      ]} 
+      onPress={handlePress} 
+      activeOpacity={0.9}
+    >
       {/* Progress bar */}
       <Animated.View 
         style={[
           styles.progressBar,
-          { width: progressWidth.interpolate({
-            inputRange: [0, 1],
-            outputRange: ['0%', '100%']
-          }) }
+          { 
+            width: progressWidth.interpolate({
+              inputRange: [0, 1],
+              outputRange: ['0%', '100%']
+            }),
+            backgroundColor: theme.primary 
+          }
         ]}
       />
       
@@ -98,18 +126,18 @@ const NowPlayingBar = () => {
               resizeMode="cover"
             />
           ) : (
-            <View style={styles.placeholderArtwork}>
-              <Ionicons name="musical-note" size={20} color="#6200ee" />
+            <View style={[styles.placeholderArtwork, { backgroundColor: theme.surface }]}>
+              <Ionicons name="musical-note" size={20} color={theme.primary} />
             </View>
           )}
         </View>
         
         {/* Track info */}
         <View style={styles.infoContainer}>
-          <Text style={styles.title} numberOfLines={1}>
+          <Text style={[styles.title, { color: theme.text }]} numberOfLines={1}>
             {currentTrack.title}
           </Text>
-          <Text style={styles.artist} numberOfLines={1}>
+          <Text style={[styles.artist, { color: theme.textSecondary }]} numberOfLines={1}>
             {currentTrack.artist || 'Unknown artist'}
           </Text>
         </View>
@@ -124,7 +152,7 @@ const NowPlayingBar = () => {
             <Ionicons 
               name={isPlaying ? 'pause' : 'play'} 
               size={28} 
-              color="#6200ee" 
+              color={theme.primary} 
             />
           </TouchableOpacity>
           
@@ -133,7 +161,7 @@ const NowPlayingBar = () => {
             onPress={handleNextTrack}
             hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
           >
-            <Ionicons name="play-skip-forward" size={24} color="#6200ee" />
+            <Ionicons name="play-skip-forward" size={24} color={theme.primary} />
           </TouchableOpacity>
         </View>
       </View>
@@ -157,25 +185,23 @@ const NowPlayingBar = () => {
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    bottom: 0,
+    bottom: 49, // Position it just above the tab bar (which is typically 49-50px)
     left: 0,
     right: 0,
     height: 64,
-    backgroundColor: '#fff',
     borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
     elevation: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
+    zIndex: 10,
   },
   progressBar: {
     position: 'absolute',
     top: 0,
     left: 0,
     height: 2,
-    backgroundColor: '#6200ee',
   },
   content: {
     flex: 1,
@@ -195,7 +221,6 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 4,
-    backgroundColor: '#f0f0f0',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -206,11 +231,9 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#333',
   },
   artist: {
     fontSize: 14,
-    color: '#666',
     marginTop: 2,
   },
   controls: {
