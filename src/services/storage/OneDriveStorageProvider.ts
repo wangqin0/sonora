@@ -299,12 +299,27 @@ export class OneDriveStorageProvider extends BaseStorageProvider {
     }
     
     try {
-      // Check if we have a cached version
-      const cachedPath = `${ONEDRIVE_CACHE_DIR}${track.id}${this.getFileExtension(track.path || '')}`;
+      // Extract file extension from the path or title
+      let fileExtension = '';
+      if (track.path && track.path.includes('.')) {
+        fileExtension = `.${this.getFileExtension(track.path)}`;
+      } else if (track.title && track.title.includes('.')) {
+        fileExtension = `.${this.getFileExtension(track.title)}`;
+      } else {
+        // Default to .mp3 if no extension found
+        fileExtension = '.mp3';
+      }
+      
+      // Create consistent file name for caching
+      const fileName = `onedrive-${track.id}${fileExtension}`;
+      
+      // Use cacheDirectory for consistent paths
+      const cachedPath = `${ONEDRIVE_CACHE_DIR}${fileName}`;
       const cacheInfo = await FileSystem.getInfoAsync(cachedPath);
       
       if (cacheInfo.exists) {
         logger.debug(`Using cached file for ${track.title}`);
+        // Return the exact same path that was used to save the file
         return cachedPath;
       }
       
@@ -316,14 +331,25 @@ export class OneDriveStorageProvider extends BaseStorageProvider {
       
       // Get download URL
       const downloadUrl = await this.getDownloadUrl(track);
+      logger.debug(`Download URL: ${downloadUrl}`);
       
       // Download the file
-      await FileSystem.downloadAsync(downloadUrl, cachedPath);
+      const downloadResult = await FileSystem.downloadAsync(downloadUrl, cachedPath);
+      logger.debug(`File downloaded to: ${downloadResult.uri}`);
       
-      return cachedPath;
+      return downloadResult.uri;
     } catch (error) {
       logger.error(`Error getting audio file URI for ${track.title}`, error);
-      throw error;
+      
+      // If we can't download/cache the file, return the direct download URL as fallback
+      try {
+        const downloadUrl = await this.getDownloadUrl(track);
+        logger.info(`Using direct download URL for ${track.title} as fallback`);
+        return downloadUrl;
+      } catch (fallbackError) {
+        logger.error(`Fallback also failed for ${track.title}`, fallbackError);
+        throw error; // Throw the original error
+      }
     }
   }
   

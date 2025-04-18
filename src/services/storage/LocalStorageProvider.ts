@@ -86,8 +86,46 @@ export class LocalStorageProvider extends BaseStorageProvider {
       throw new Error('Track is not from local storage');
     }
     
-    // For local files, the URI is already playable
-    return track.uri;
+    try {
+      // Check if the file still exists
+      const fileInfo = await FileSystem.getInfoAsync(track.uri);
+      
+      if (fileInfo.exists) {
+        logger.debug(`Local file exists: ${track.title}`);
+        return track.uri;
+      }
+      
+      // File doesn't exist at the saved path, try to find it in the current cache directory
+      logger.warn(`Local file not found at path: ${track.uri}`);
+      
+      // Extract filename from the URI
+      const uriParts = track.uri.split('/');
+      const fileName = uriParts[uriParts.length - 1];
+      
+      // Check if file exists in current cache directory
+      const audioCacheDir = `${FileSystem.cacheDirectory}audio/`;
+      const newPath = `${audioCacheDir}${fileName}`;
+      const newFileInfo = await FileSystem.getInfoAsync(newPath);
+      
+      if (newFileInfo.exists) {
+        logger.info(`Found file in current cache directory: ${newPath}`);
+        
+        // Update the track's URI and path for future use
+        track.uri = newPath;
+        track.path = newPath;
+        
+        // Save the updated track info
+        await this.saveTracks();
+        
+        return newPath;
+      }
+      
+      // If we can't find the file, throw an error
+      throw new Error(`Local audio file not found: ${track.title}`);
+    } catch (error) {
+      logger.error(`Error getting audio file URI for ${track.title}`, error);
+      throw error;
+    }
   }
   
   /**

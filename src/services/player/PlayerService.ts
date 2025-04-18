@@ -36,12 +36,21 @@ class PlayerService {
       
       logger.info(`Loading track: ${track.title}`);
       
+      // Add debug logging for the track URI
+      logger.debug(`Track URI: ${track.uri}`);
+      
       // Create and load the new sound
       const { sound } = await Audio.Sound.createAsync(
         { uri: track.uri },
         { shouldPlay: true },
         this.handlePlaybackStatusUpdate
-      );
+      ).catch(error => {
+        logger.error(`Error creating sound object: ${error.message}`);
+        throw error;
+      });
+      
+      // Add debug logging for successful sound creation
+      logger.debug('Sound object created successfully');
       
       this.sound = sound;
       this.currentTrack = track;
@@ -49,6 +58,12 @@ class PlayerService {
       
       // Start position update interval
       this.startPositionUpdateInterval();
+      
+      // Add explicit playback start
+      await sound.playAsync().catch(error => {
+        logger.error(`Error starting playback: ${error.message}`);
+        throw error;
+      });
       
       logger.info(`Playing track: ${track.title}`);
     } catch (error) {
