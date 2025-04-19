@@ -4,16 +4,18 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, Animated } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, Animated, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import Slider from '@react-native-community/slider';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useStore } from '../../store';
 import { usePlayerStore } from '../../store/playerStore';
 import { formatTime } from '../../utils/formatters';
 import { logger } from '../../utils/logger';
 import { useTheme } from '../../theme/ThemeContext';
+import { formatArtworkUri } from '../../utils/artworkHelper';
 
 const NowPlayingBar = () => {
   const navigation = useNavigation<any>();
@@ -22,6 +24,7 @@ const NowPlayingBar = () => {
   // Get player state directly from the player store
   const playerState = usePlayerStore(state => state.playerState);
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
   
   const [sliderValue, setSliderValue] = useState(0);
   const [isSeeking, setIsSeeking] = useState(false);
@@ -49,11 +52,6 @@ const NowPlayingBar = () => {
     }
   }, [currentPosition, isSeeking, currentTrack, duration, progressWidth]);
   
-  // If no track is playing, don't show the player
-  if (!currentTrack) {
-    return null;
-  }
-  
   // Handle press on the player to open Playing tab
   const handlePress = () => {
     navigation.navigate('MainTabs', { screen: 'Playing' });
@@ -62,23 +60,29 @@ const NowPlayingBar = () => {
   // Handle play/pause button press
   const handlePlayPause = (e: import('react-native').GestureResponderEvent) => {
     e.stopPropagation(); // Prevent opening the full player
-    togglePlayPause();
+    if (currentTrack) {
+      togglePlayPause();
+    }
   };
   
   // Handle next track button press
   const handleNextTrack = (e: import('react-native').GestureResponderEvent) => {
     e.stopPropagation(); // Prevent opening the full player
-    nextTrack();
+    if (currentTrack) {
+      nextTrack();
+    }
   };
   
   // Handle slider value change
   const handleSliderValueChange = (value: number) => {
+    if (!currentTrack) return;
     setIsSeeking(true);
     setSliderValue(value);
   };
   
   // Handle slider seek complete
   const handleSliderSlidingComplete = async (value: number) => {
+    if (!currentTrack) return;
     try {
       await seekTo(value);
     } catch (error) {
@@ -88,6 +92,9 @@ const NowPlayingBar = () => {
     }
   };
   
+  // Only render if there's a track playing
+  if (!currentTrack) return null;
+  
   return (
     <TouchableOpacity 
       style={[
@@ -96,13 +103,13 @@ const NowPlayingBar = () => {
           backgroundColor: theme.cardBackground,
           borderTopColor: theme.border,
           borderBottomColor: theme.border,
-          borderBottomWidth: 1
+          borderBottomWidth: 1,
         }
       ]} 
       onPress={handlePress} 
       activeOpacity={0.9}
     >
-      {/* Progress bar */}
+      {/* Progress bar - only show when a track is playing */}
       <Animated.View 
         style={[
           styles.progressBar,
@@ -121,7 +128,7 @@ const NowPlayingBar = () => {
         <View style={styles.artworkContainer}>
           {currentTrack.artwork ? (
             <Image 
-              source={{ uri: currentTrack.artwork }} 
+              source={{ uri: formatArtworkUri(currentTrack.artwork) }} 
               style={styles.artwork} 
               resizeMode="cover"
             />
@@ -161,12 +168,16 @@ const NowPlayingBar = () => {
             onPress={handleNextTrack}
             hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
           >
-            <Ionicons name="play-skip-forward" size={24} color={theme.primary} />
+            <Ionicons 
+              name="play-skip-forward" 
+              size={24} 
+              color={theme.primary} 
+            />
           </TouchableOpacity>
         </View>
       </View>
       
-      {/* Hidden slider for seeking */}
+      {/* Hidden slider for seeking - only enable when track is playing */}
       <Slider
         style={styles.slider}
         minimumValue={0}
@@ -184,10 +195,6 @@ const NowPlayingBar = () => {
 
 const styles = StyleSheet.create({
   container: {
-    position: 'absolute',
-    bottom: 49, // Position it just above the tab bar (which is typically 49-50px)
-    left: 0,
-    right: 0,
     height: 64,
     borderTopWidth: 1,
     elevation: 8,
@@ -195,7 +202,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    zIndex: 10,
   },
   progressBar: {
     position: 'absolute',

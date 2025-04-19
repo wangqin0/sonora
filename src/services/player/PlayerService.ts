@@ -6,6 +6,7 @@
 import { Audio } from 'expo-av';
 import { Track } from '../../types';
 import { logger } from '../../utils/logger';
+import { storageManager } from '../storage/StorageManager';
 
 class PlayerService {
   private static instance: PlayerService;
@@ -19,6 +20,9 @@ class PlayerService {
   
   private constructor() {}
   
+  /**
+   * Get the singleton instance of the player service
+   */
   public static getInstance(): PlayerService {
     if (!PlayerService.instance) {
       PlayerService.instance = new PlayerService();
@@ -31,44 +35,55 @@ class PlayerService {
    */
   public async play(track: Track): Promise<void> {
     try {
-      // Unload any existing sound
-      await this.unloadSound();
+      logger.info(`Playing track: ${track.title}`);
       
-      logger.info(`Loading track: ${track.title}`);
+      // Unload current sound if exists
+      if (this.sound) {
+        await this.sound.unloadAsync();
+        this.sound = null;
+      }
       
-      // Add debug logging for the track URI
-      logger.debug(`Track URI: ${track.uri}`);
+      // Store track info
+      this.currentTrack = track;
       
-      // Create and load the new sound
+      // If no URI is provided, get it from the storage manager
+      let uri = track.uri;
+      if (!uri) {
+        uri = await storageManager.getPlayableUri(track);
+      }
+      
+      // Try to extract artwork if not already present
+      if (!track.artwork) {
+        await this.tryExtractArtwork(track);
+      }
+      
+      // Create and load the sound
       const { sound } = await Audio.Sound.createAsync(
-        { uri: track.uri },
+        { uri },
         { shouldPlay: true },
         this.handlePlaybackStatusUpdate
-      ).catch(error => {
-        logger.error(`Error creating sound object: ${error.message}`);
-        throw error;
-      });
-      
-      // Add debug logging for successful sound creation
-      logger.debug('Sound object created successfully');
+      );
       
       this.sound = sound;
-      this.currentTrack = track;
       this.isPlaying = true;
       
-      // Start position update interval
-      this.startPositionUpdateInterval();
-      
-      // Add explicit playback start
-      await sound.playAsync().catch(error => {
-        logger.error(`Error starting playback: ${error.message}`);
-        throw error;
-      });
-      
-      logger.info(`Playing track: ${track.title}`);
+      logger.debug(`Sound loaded for track: ${track.title}`);
     } catch (error) {
       logger.error(`Error playing track: ${track.title}`, error);
       throw error;
+    }
+  }
+  
+  /**
+   * Try to extract artwork from the audio file if not already present
+   */
+  private async tryExtractArtwork(track: Track): Promise<void> {
+    try {
+      // Let the appropriate storage provider extract metadata
+      await storageManager.extractTrackMetadata(track);
+    } catch (error) {
+      logger.warn(`Failed to extract artwork for: ${track.title}`, error);
+      // Continue without artwork
     }
   }
   

@@ -10,8 +10,11 @@ import { LogLevel } from '../types';
  * Enable debug level logging
  */
 export const enableDebugLogging = () => {
-  logger.setLogLevel(LogLevel.DEBUG);
-  logger.debug('DEBUG logging enabled for troubleshooting');
+  logger.setLogLevel(LogLevel.INFO);
+
+  if (logger.getLogLevel() === LogLevel.DEBUG) {
+    logger.debug('DEBUG logging enabled for troubleshooting');
+  }
   
   // Log the app environment
   logger.debug('App environment:', {

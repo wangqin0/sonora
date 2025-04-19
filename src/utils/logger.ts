@@ -32,6 +32,13 @@ class Logger {
   }
 
   /**
+   * Get the current log level
+   */
+  public getLogLevel(): LogLevel {
+    return this.currentLogLevel;
+  }
+
+  /**
    * Set the current log level
    */
   public setLogLevel(level: LogLevel): void {

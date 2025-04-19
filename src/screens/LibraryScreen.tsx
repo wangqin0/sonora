@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl, Image } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl, Image, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,14 +18,18 @@ import { logger } from '../utils/logger';
 import { useTheme } from '../theme/ThemeContext';
 import { formatTime as formatDuration } from '../utils/formatters';
 import { extractCleanTitle } from '../utils/formatters';
+import FloatingActionButton from '../components/common/FloatingActionButton';
+import { usePlayerStore } from '../store/playerStore';
 
 const LibraryScreen = () => {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
-  const { tracks, playlists, isLibraryLoading, loadLibrary, playTrack, playPlaylist } = useStore();
+  const { tracks, playlists, isLibraryLoading, loadLibrary, playTrack, playPlaylist, importLocalTracksFromFolder } = useStore();
   const { theme } = useTheme();
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<'tracks' | 'playlists'>('tracks');
   const insets = useSafeAreaInsets();
+  const playerState = usePlayerStore(state => state.playerState);
+  const hasTrack = !!playerState.currentTrack;
 
   // Load library on component mount
   useEffect(() => {
@@ -60,6 +64,23 @@ const LibraryScreen = () => {
   // Handle playlist press
   const handlePlaylistPress = (playlist: Playlist) => {
     navigation.navigate('PlaylistDetail', { playlistId: playlist.id });
+  };
+
+  // Handle add music button press
+  const handleAddMusic = async () => {
+    try {
+      // Import tracks from local storage
+      const tracks = await importLocalTracksFromFolder();
+      
+      if (tracks.length > 0) {
+        Alert.alert('Success', `Added ${tracks.length} tracks to your library`);
+      } else {
+        Alert.alert('No tracks added', 'No audio files were found or selected');
+      }
+    } catch (error) {
+      logger.error('Error importing audio files:', error);
+      Alert.alert('Error', 'Failed to import audio files');
+    }
   };
 
   // Render track item
@@ -139,13 +160,7 @@ const LibraryScreen = () => {
         <View style={styles.emptyContainer}>
           <Ionicons name="musical-notes-outline" size={64} color={theme.primary} />
           <Text style={[styles.emptyTitle, { color: theme.text }]}>No tracks found</Text>
-          <Text style={[styles.emptyText, { color: theme.textSecondary }]}>Import music from your device or connect to OneDrive</Text>
-          <TouchableOpacity 
-            style={[styles.emptyButton, { backgroundColor: theme.primary }]}
-            onPress={() => navigation.navigate('StorageProviders' as never)}
-          >
-            <Text style={styles.emptyButtonText}>Add Music</Text>
-          </TouchableOpacity>
+          <Text style={[styles.emptyText, { color: theme.textSecondary }]}>Import music from your device using the add button</Text>
         </View>
       );
     }
@@ -242,23 +257,14 @@ const LibraryScreen = () => {
         />
       )}
 
-      {/* Floating action button */}
-      <TouchableOpacity 
-        style={[styles.fab, { backgroundColor: theme.primary }]}
-        onPress={() => {
-          if (activeTab === 'tracks') {
-            navigation.navigate('StorageProviders' as never);
-          } else {
-            // TODO: Show create playlist dialog
-          }
-        }}
-      >
-        <Ionicons 
-          name={activeTab === 'tracks' ? 'add' : 'create'} 
-          size={24} 
-          color="#fff" 
-        />
-      </TouchableOpacity>
+      {/* Add Music Floating Button */}
+      <FloatingActionButton 
+        onPress={handleAddMusic} 
+        icon="add-outline"
+        bottom={hasTrack ? 150 : 150}
+        right={24}
+        size={60}
+      />
     </View>
   );
 };
@@ -378,22 +384,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
-  },
-  fab: {
-    position: 'absolute',
-    right: 16,
-    bottom: 125,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
-    zIndex: 10,
   },
 });
 

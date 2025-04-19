@@ -181,7 +181,7 @@ export class LocalStorageProvider extends BaseStorageProvider {
         // Copy file to document directory to ensure it's readable
         const cachePath = await this.copyFileToDocumentDirectory(file.uri, file.name);
         
-        // Extract metadata from the audio file
+        // Extract metadata from the audio file including artwork
         let metadata = null;
         try {
           metadata = await MusicInfo.getMusicInfoAsync(cachePath, {
@@ -426,5 +426,66 @@ export class LocalStorageProvider extends BaseStorageProvider {
    */
   private getFileNameWithoutExtension(filename: string): string {
     return filename.split('.').slice(0, -1).join('.');
+  }
+
+  /**
+   * Extract metadata from an audio file and update the track object
+   * @param track Track to update
+   * @param filePath Path to the audio file
+   */
+  public async extractAndUpdateMetadata(track: Track, filePath: string): Promise<void> {
+    try {
+      // Only extract metadata if track is missing information
+      if (!track.artist || !track.album || !track.artwork) {
+        const metadata = await MusicInfo.getMusicInfoAsync(filePath, {
+          title: true,
+          artist: true,
+          album: true,
+          genre: true,
+          picture: true
+        });
+        
+        // Try to extract artist from filename if metadata doesn't provide it
+        let artistFromFilename;
+        if (track.title.includes('-')) {
+          const parts = track.title.split('-');
+          if (parts.length >= 2) {
+            artistFromFilename = parts[0].trim();
+          }
+        }
+        
+        if (metadata) {
+          // Update track with extracted metadata
+          if (metadata.title && track.title === this.getFileNameWithoutExtension(track.title)) {
+            track.title = metadata.title;
+          }
+          
+          if (!track.artist) {
+            track.artist = metadata.artist || artistFromFilename || 'Unknown artist';
+          }
+          
+          if (!track.album && metadata.album) {
+            track.album = metadata.album;
+          }
+          
+          if (!track.artwork && metadata.picture?.pictureData) {
+            track.artwork = metadata.picture.pictureData;
+            logger.debug(`Extracted artwork for track: ${track.title}`);
+          }
+          
+          // Save the updated tracks to persistent storage
+          await this.saveTracks();
+        } else if (!track.artist) {
+          // If no metadata but we have an artist from filename, use it
+          track.artist = artistFromFilename || 'Unknown artist';
+          
+          // Save the updated tracks to persistent storage
+          await this.saveTracks();
+        }
+      }
+    } catch (error) {
+      logger.warn(`Failed to extract metadata for ${track.title}`, error);
+      // Don't throw an error, just continue with the existing track data
+    }
   }
 }

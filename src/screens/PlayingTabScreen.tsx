@@ -4,16 +4,18 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions, Platform } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useStore } from '../store';
 import { usePlayerStore } from '../store/playerStore';
 import { formatTime } from '../utils/formatters';
 import { useTheme } from '../theme/ThemeContext';
 import { logger } from '../utils/logger';
+import { formatArtworkUri } from '../utils/artworkHelper';
 
 const { width } = Dimensions.get('window');
 
@@ -24,6 +26,7 @@ const PlayingTabScreen = () => {
   // Get player state directly from player store to ensure fresh data
   const playerState = usePlayerStore(state => state.playerState);
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
   
   const [sliderValue, setSliderValue] = useState(0);
   const [volumeValue, setVolumeValue] = useState(1);
@@ -88,14 +91,29 @@ const PlayingTabScreen = () => {
     logger.debug(`PlayingTabScreen player state - currentTrack: ${currentTrack ? currentTrack.title : 'null'}, isPlaying: ${isPlaying}`);
   }, [currentTrack, isPlaying]);
   
+  // Calculate bottom padding to make sure content isn't hidden by tab bar and player
+  const tabBarHeight = 64;
+  const bottomSafeArea = Platform.OS === 'ios' ? Math.max(insets.bottom / 2, 6) : 0;
+  const playerBarHeight = currentTrack ? 64 : 0;
+  const bottomPadding = tabBarHeight + bottomSafeArea + playerBarHeight;
+  
   // If no track is loaded, show placeholder
   if (!currentTrack) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <View style={[
+        styles.container, 
+        { 
+          backgroundColor: theme.background,
+          paddingBottom: bottomPadding
+        }
+      ]}>
         <View style={styles.placeholderContainer}>
           <Ionicons name="musical-notes-outline" size={80} color={theme.primary} />
           <Text style={[styles.placeholderText, { color: theme.textSecondary }]}>
             No track playing
+          </Text>
+          <Text style={[styles.placeholderSubText, { color: theme.textSecondary }]}>
+            Choose a track from your library to start playback
           </Text>
         </View>
       </View>
@@ -109,12 +127,18 @@ const PlayingTabScreen = () => {
   }
   
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
+    <View style={[
+      styles.container, 
+      { 
+        backgroundColor: theme.background,
+        paddingBottom: bottomPadding
+      }
+    ]}>
       {/* Album art */}
       <View style={styles.artworkContainer}>
         {currentTrack.artwork ? (
           <Image 
-            source={{ uri: currentTrack.artwork }} 
+            source={{ uri: formatArtworkUri(currentTrack.artwork) }} 
             style={styles.artwork} 
             resizeMode="contain"
           />
@@ -206,10 +230,19 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 20,
+    borderRadius: 12,
   },
   placeholderText: {
     fontSize: 18,
     marginTop: 16,
+    fontWeight: 'bold',
+  },
+  placeholderSubText: {
+    fontSize: 14,
+    marginTop: 8,
+    textAlign: 'center',
+    opacity: 0.8,
   },
   artworkContainer: {
     alignItems: 'center',

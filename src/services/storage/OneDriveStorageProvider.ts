@@ -389,7 +389,7 @@ export class OneDriveStorageProvider extends BaseStorageProvider {
   /**
    * Extract metadata from an audio file and update the track object
    */
-  private async extractAndUpdateMetadata(track: Track, filePath: string): Promise<void> {
+  public async extractAndUpdateMetadata(track: Track, filePath: string): Promise<void> {
     try {
       // Only extract metadata if track is missing information
       if (!track.artist || !track.album || !track.artwork) {
@@ -426,6 +426,7 @@ export class OneDriveStorageProvider extends BaseStorageProvider {
           
           if (!track.artwork && metadata.picture?.pictureData) {
             track.artwork = metadata.picture.pictureData;
+            logger.debug(`Extracted artwork for track: ${extractCleanTitle(track.title, track.artist)}`);
           }
           
           // Save the updated tracks to persistent storage
