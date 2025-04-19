@@ -5,11 +5,10 @@
 
 import { LocalStorageProvider } from './LocalStorageProvider';
 import { OneDriveStorageProvider } from './OneDriveStorageProvider';
-import { StorageProviderInterface } from './StorageProvider';
+import { StorageProviderInterface, BaseStorageProvider } from './StorageProvider';
 import { Track } from '../../types';
 import { logger } from '../../utils/logger';
 import { ONEDRIVE_CLIENT_ID } from '../../config/onedrive';
-import { BaseStorageProvider } from './StorageProvider';
 
 class StorageManager {
   private static instance: StorageManager;

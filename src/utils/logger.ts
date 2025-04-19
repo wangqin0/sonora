@@ -126,10 +126,10 @@ class Logger {
         console.warn(formattedMessage, data ? data : '');
         break;
       case 'INFO':
-        console.info(formattedMessage, data ? data : '');
+        console.warn(`[INFO] ${formattedMessage}`, data ? data : '');
         break;
       default:
-        console.log(formattedMessage, data ? data : '');
+        console.warn(`[DEBUG] ${formattedMessage}`, data ? data : '');
     }
 
     // Write to file if enabled
@@ -156,6 +156,7 @@ class Logger {
       
       this.isFileLoggingEnabled = true;
     } catch (error) {
+      // This is actually an error, but we're using console.error which is allowed by our ESLint config
       console.error('Failed to setup file logging:', error);
       this.isFileLoggingEnabled = false;
     }
@@ -190,6 +191,7 @@ class Logger {
       const existingContent = await FileSystem.readAsStringAsync(LOG_FILE_PATH);
       await FileSystem.writeAsStringAsync(LOG_FILE_PATH, existingContent + logEntry);
     } catch (error) {
+      // This is an error case, so console.error is appropriate and allowed by ESLint
       console.error('Failed to write to log file:', error);
     }
   }
@@ -216,6 +218,7 @@ class Logger {
       // Create new empty log file
       await FileSystem.writeAsStringAsync(LOG_FILE_PATH, '');
     } catch (error) {
+      // This is an error case, so console.error is appropriate and allowed by ESLint
       console.error('Failed to rotate log file:', error);
     }
   }
