@@ -16,8 +16,7 @@ import { useStore } from '../store';
 import { Track, Playlist } from '../types';
 import { logger } from '../utils/logger';
 import { useTheme } from '../theme/ThemeContext';
-import { formatTime as formatDuration } from '../utils/formatters';
-import { extractCleanTitle } from '../utils/formatters';
+import { formatTime as formatDuration, extractCleanTitle } from '../utils/formatters';
 import FloatingActionButton from '../components/common/FloatingActionButton';
 import { usePlayerStore } from '../store/playerStore';
 
