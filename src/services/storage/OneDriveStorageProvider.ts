@@ -597,7 +597,22 @@ export class OneDriveStorageProvider extends BaseStorageProvider {
       
       // Open the auth URL in a browser
       logger.debug('Opening auth session in browser...');
-      const result = await WebBrowser.openAuthSessionAsync(authUrl, this.authConfig.redirectUri);
+      
+      // Use different approach based on platform for best compatibility
+      let result;
+      if (Platform.OS === 'ios') {
+        // iOS works well with the standard approach
+        result = await WebBrowser.openAuthSessionAsync(authUrl, this.authConfig.redirectUri);
+      } else {
+        // Android needs a more direct approach
+        // We'll use maybeCompleteAuthSession for Android to handle the redirection
+        WebBrowser.maybeCompleteAuthSession();
+        result = await WebBrowser.openAuthSessionAsync(authUrl, this.authConfig.redirectUri, {
+          showInRecents: true,
+          createTask: true
+        });
+      }
+      
       logOAuthDetails('WebBrowser result', result);
       
       logger.debug('WebBrowser result type: ' + result.type);

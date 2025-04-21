@@ -29,6 +29,16 @@
       "android": {
         "prebuildCommand": "npx expo prebuild"
       }
+    },
+    "apk": {
+      "android": {
+        "buildType": "apk",
+        "prebuildCommand": "npx expo prebuild",
+        "gradleCommand": ":app:assembleRelease -x lint -x lintVitalRelease",
+        "env": {
+          "GRADLE_OPTS": "-Dorg.gradle.jvmargs='-Xmx3072m -XX:MaxMetaspaceSize=1024m'"
+        }
+      }
     }
   }
 } 

@@ -88,12 +88,27 @@ export class LocalStorageProvider extends BaseStorageProvider {
     }
     
     try {
+      // On Android, we need to handle both file:// and non-file:// URIs
+      let normalizedUri = track.uri;
+      if (Platform.OS === 'android' && !normalizedUri.startsWith('file://')) {
+        normalizedUri = `file://${normalizedUri}`;
+      }
+      
       // Check if the file still exists
-      const fileInfo = await FileSystem.getInfoAsync(track.uri);
+      const fileInfo = await FileSystem.getInfoAsync(normalizedUri);
       
       if (fileInfo.exists) {
         logger.debug(`Local file exists: ${track.title}`);
-        return track.uri;
+        return normalizedUri;
+      }
+      
+      // Try the original URI if we modified it
+      if (normalizedUri !== track.uri) {
+        const originalFileInfo = await FileSystem.getInfoAsync(track.uri);
+        if (originalFileInfo.exists) {
+          logger.debug(`Local file exists at original URI: ${track.title}`);
+          return track.uri;
+        }
       }
       
       // File doesn't exist at the saved path, try to find it in other directories
@@ -112,13 +127,14 @@ export class LocalStorageProvider extends BaseStorageProvider {
         logger.info(`Found file in document directory: ${docPath}`);
         
         // Update the track's URI and path for future use
-        track.uri = docPath;
-        track.path = docPath;
+        const persistentUri = Platform.OS === 'android' ? `file://${docPath}` : docPath;
+        track.uri = persistentUri;
+        track.path = persistentUri;
         
         // Save the updated track info
         await this.saveTracks();
         
-        return docPath;
+        return persistentUri;
       }
       
       // Check if file exists in legacy cache directory
@@ -133,13 +149,14 @@ export class LocalStorageProvider extends BaseStorageProvider {
         const docPath = await this.copyFileToDocumentDirectory(cachePath, fileName);
         
         // Update the track's URI and path for future use
-        track.uri = docPath;
-        track.path = docPath;
+        const persistentUri = Platform.OS === 'android' ? `file://${docPath}` : docPath;
+        track.uri = persistentUri;
+        track.path = persistentUri;
         
         // Save the updated track info
         await this.saveTracks();
         
-        return docPath;
+        return persistentUri;
       }
       
       // If we can't find the file, throw an error
@@ -336,10 +353,37 @@ export class LocalStorageProvider extends BaseStorageProvider {
         // Populate tracks map
         this.tracks.clear();
         for (const track of savedTracks) {
-          this.tracks.set(track.id, track);
+          // Verify and fix file paths for Android
+          if (Platform.OS === 'android') {
+            // Ensure URI has file:// protocol
+            if (track.uri && !track.uri.startsWith('file://')) {
+              track.uri = `file://${track.uri}`;
+            }
+            // Ensure path has file:// protocol
+            if (track.path && !track.path.startsWith('file://')) {
+              track.path = `file://${track.path}`;
+            }
+          }
+          
+          // Check if the file still exists
+          if (track.uri) {
+            const fileInfo = await FileSystem.getInfoAsync(track.uri);
+            if (fileInfo.exists) {
+              this.tracks.set(track.id, track);
+            } else {
+              logger.warn(`Track file not found, will attempt to locate: ${track.title}`);
+              // Try to find the file by name in document directory
+              const found = await this.findFileByName(track);
+              if (found) {
+                this.tracks.set(track.id, track);
+              } else {
+                logger.warn(`Could not locate file for track: ${track.title}`);
+              }
+            }
+          }
         }
         
-        logger.info(`Loaded ${savedTracks.length} tracks from local storage`);
+        logger.info(`Loaded ${this.tracks.size} tracks from local storage`);
       }
       
       this.initialized = true;
@@ -406,8 +450,18 @@ export class LocalStorageProvider extends BaseStorageProvider {
         to: destinationUri
       });
       
-      logger.debug(`Copied file to document storage: ${destinationUri}`);
-      return destinationUri;
+      // On Android, ensure we're using the correct path format that will persist between app launches
+      let persistentUri = destinationUri;
+      if (Platform.OS === 'android') {
+        // Make sure we're using the file:// protocol which is more reliable on Android
+        if (!persistentUri.startsWith('file://')) {
+          persistentUri = `file://${persistentUri}`;
+        }
+        logger.debug(`Using Android-specific persistent URI: ${persistentUri}`);
+      }
+      
+      logger.debug(`Copied file to document storage: ${persistentUri}`);
+      return persistentUri;
     } catch (error) {
       logger.error(`Failed to copy file to document storage: ${fileName}`, error);
       throw error;
@@ -426,6 +480,50 @@ export class LocalStorageProvider extends BaseStorageProvider {
    */
   private getFileNameWithoutExtension(filename: string): string {
     return filename.split('.').slice(0, -1).join('.');
+  }
+
+  /**
+   * Try to find a file by its name in the document directory
+   * This is useful for Android where file paths might change between app launches
+   */
+  private async findFileByName(track: Track): Promise<boolean> {
+    try {
+      if (!track.uri) return false;
+      
+      // Extract filename from the URI
+      const uriParts = track.uri.split('/');
+      const fileName = uriParts[uriParts.length - 1];
+      
+      // Check document directory
+      const audioDocDir = `${FileSystem.documentDirectory}audio/`;
+      const dirInfo = await FileSystem.getInfoAsync(audioDocDir);
+      
+      if (!dirInfo.exists) return false;
+      
+      // List all files in the audio directory
+      const files = await FileSystem.readDirectoryAsync(audioDocDir);
+      
+      // Look for files with similar names
+      for (const file of files) {
+        // Check if file contains the original filename (without timestamp prefix)
+        if (file.includes(fileName) || fileName.includes(file)) {
+          const newPath = `${audioDocDir}${file}`;
+          const persistentUri = Platform.OS === 'android' ? `file://${newPath}` : newPath;
+          
+          // Update track with new path
+          track.uri = persistentUri;
+          track.path = persistentUri;
+          
+          logger.info(`Found relocated file for track: ${track.title} at ${persistentUri}`);
+          return true;
+        }
+      }
+      
+      return false;
+    } catch (error) {
+      logger.error(`Error finding file by name for track: ${track.title}`, error);
+      return false;
+    }
   }
 
   /**

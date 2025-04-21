@@ -10,6 +10,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
 import { Platform, View, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as Linking from 'expo-linking';
 
 // Import screens
 import LibraryScreen from '../screens/LibraryScreen';
@@ -147,9 +148,23 @@ const MainTabNavigator = () => {
 // Root stack navigator
 const AppNavigator = () => {
   const { theme, isDarkMode } = useTheme();
+  
+  // Define linking configuration for deep links
+  const linking = {
+    prefixes: ['sonora://', 'com.sonora.musicplayer://'],
+    config: {
+      screens: {
+        MainTabs: 'main',
+        Player: 'player',
+        PlaylistDetail: 'playlist/:playlistId',
+        StorageProviders: 'storage',
+      },
+    },
+  };
 
   return (
     <NavigationContainer
+      linking={linking}
       theme={{
         dark: isDarkMode,
         colors: {

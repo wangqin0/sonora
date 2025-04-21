@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Audio } from 'expo-av';
+import * as WebBrowser from 'expo-web-browser';
 
 import AppNavigator from './src/navigation/AppNavigator';
 import { useStore } from './src/store';
@@ -25,6 +26,9 @@ export default function App() {
     };
 
     setupAudio();
+    
+    // Initialize WebBrowser session management
+    WebBrowser.maybeCompleteAuthSession();
     
     // Enable debug logging for troubleshooting
     enableDebugLogging();

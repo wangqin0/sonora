@@ -25,5 +25,22 @@ export default {
   web: {
     favicon: "./assets/favicon.png"
   },
-  scheme: "com.sonora.musicplayer"
+  scheme: "sonora",
+  expo: {
+    scheme: "sonora",
+    extra: {
+      eas: {
+        projectId: "982818a4-006b-43a3-8550-e17c068ad920"
+      }
+    },
+    android: {
+      package: "com.sonora.musicplayer"
+    },
+    ios: {
+      bundleIdentifier: "com.sonora.musicplayer"
+    },
+    cli: {
+      appVersionSource: "remote"
+    }
+  },
 }; 

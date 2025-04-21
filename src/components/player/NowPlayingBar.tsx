@@ -42,13 +42,9 @@ const NowPlayingBar = () => {
     if (!isSeeking && currentTrack) {
       setSliderValue(currentPosition);
       
-      // Animate progress bar
+      // Update progress bar width directly (removed animation)
       const progress = duration > 0 ? currentPosition / duration : 0;
-      Animated.timing(progressWidth, {
-        toValue: progress,
-        duration: 100,
-        useNativeDriver: false
-      }).start();
+      progressWidth.setValue(progress);
     }
   }, [currentPosition, isSeeking, currentTrack, duration, progressWidth]);
   

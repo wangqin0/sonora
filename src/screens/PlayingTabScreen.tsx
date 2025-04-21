@@ -3,7 +3,7 @@
  * Tab showing currently playing track with controls
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions, Platform } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { Ionicons } from '@expo/vector-icons';
@@ -40,33 +40,31 @@ const PlayingTabScreen = () => {
       // Log the current state to help with debugging
       logger.info(`PlayingTabScreen focused - currentTrack: ${currentTrack ? currentTrack.title : 'null'}`);
       
-      // Force a re-render to ensure we have the latest player state
-      const interval = setInterval(() => {
-        // This empty setState will trigger a re-render
-        setSliderValue(prev => {
-          if (currentTrack && !isSeeking) {
-            return playerState.currentPosition;
-          }
-          return prev;
-        });
-      }, 500);
+      // We don't need to force updates here as the useEffect below will handle it
       
-      return () => clearInterval(interval);
-    }, [currentTrack, playerState, isSeeking])
+      return () => {};
+    }, [currentTrack])
   );
   
   // Update slider position based on current playback position
+  // This is now the single source of truth for slider updates
+  const animationFrameRef = useRef<number>();
+  const prevPositionRef = useRef<number>(0);
+
+  // Update slider state based on current playback position when not seeking
   useEffect(() => {
     if (!isSeeking && currentTrack) {
       setSliderValue(currentPosition);
     }
   }, [currentPosition, isSeeking, currentTrack]);
   
-  // Handle slider value change
+  // Handle slider value change - this needs to be immediate for good UX
   const handleSliderValueChange = (value: number) => {
     setIsSeeking(true);
     setSliderValue(value);
+    prevPositionRef.current = value; // Update the reference to prevent jumps
   };
+  
   
   // Handle slider seek complete
   const handleSliderSlidingComplete = async (value: number) => {
@@ -165,6 +163,7 @@ const PlayingTabScreen = () => {
           style={styles.slider}
           minimumValue={0}
           maximumValue={duration || 1}
+          // Always use the state value for the slider
           value={sliderValue}
           minimumTrackTintColor={theme.primary}
           maximumTrackTintColor={theme.border}
@@ -318,4 +317,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default PlayingTabScreen; 
+export default PlayingTabScreen;

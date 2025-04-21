@@ -66,20 +66,9 @@ const LibraryScreen = () => {
   };
 
   // Handle add music button press
-  const handleAddMusic = async () => {
-    try {
-      // Import tracks from local storage
-      const tracks = await importLocalTracksFromFolder();
-      
-      if (tracks.length > 0) {
-        Alert.alert('Success', `Added ${tracks.length} tracks to your library`);
-      } else {
-        Alert.alert('No tracks added', 'No audio files were found or selected');
-      }
-    } catch (error) {
-      logger.error('Error importing audio files:', error);
-      Alert.alert('Error', 'Failed to import audio files');
-    }
+  const handleAddMusic = () => {
+    // Navigate to the storage providers screen instead of directly importing files
+    navigation.navigate('StorageProviders');
   };
 
   // Render track item
